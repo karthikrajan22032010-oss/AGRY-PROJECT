@@ -5,14 +5,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  height: 60px;
-  background: rgba(5, 13, 8, 0.92);
-  border-bottom: 1px solid var(--border-green);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
-  gap: 12px;
+  padding: 0 32px;
+  height: 72px;
+  background: rgba(8, 20, 12, 0.85);
+  border-bottom: 1px solid rgba(0, 255, 100, 0.1);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+  gap: 20px;
 }
 
 /* ─── Logo ─── */
@@ -25,17 +25,19 @@
 }
 
 .header-logo-icon {
-  font-size: 1.4rem;
-  filter: drop-shadow(0 0 8px rgba(0,255,100,0.7));
-  animation: float 3s ease-in-out infinite;
+  font-size: 1.8rem;
+  filter: drop-shadow(0 0 12px rgba(0, 255, 100, 0.5));
 }
 
 .header-logo-text {
-  font-size: 1.2rem;
-  font-weight: 900;
-  color: #00ff80;
-  letter-spacing: 3px;
-  text-shadow: 0 0 10px rgba(0,255,100,0.5);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 5px;
+  background: linear-gradient(to right, #00ff80, #00e664);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 100, 0.3));
 }
 
 /* ─── Nav ─── */
@@ -48,28 +50,41 @@
 .header-nav-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 8px;
+  padding: 10px 20px;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: #94a3b8;
   font-family: var(--font-main);
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  border-radius: 6px;
-  transition: var(--transition);
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
 
 .header-nav-btn:hover {
-  background: rgba(0,255,100,0.06);
-  color: var(--text-primary);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .header-nav-btn.active {
-  background: rgba(0,230,100,0.12);
   color: var(--green-primary);
-  box-shadow: 0 0 10px rgba(0,230,100,0.1);
+  background: rgba(0, 230, 100, 0.08);
+  box-shadow: 0 4px 15px rgba(0, 230, 100, 0.1);
+}
+
+.header-nav-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--green-primary);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--green-primary);
 }
 
 /* ─── Right Section ─── */

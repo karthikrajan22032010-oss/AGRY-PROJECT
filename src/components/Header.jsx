@@ -73,7 +73,7 @@ export default function Header({ user, onLogout, page, setPage }) {
     <header className={`app-header ${langClass}`}>
       {/* Left — Logo */}
       <div className="header-logo" onClick={() => setPage('home')} id="header-logo">
-        <span className="header-logo-icon">🌾</span>
+        <img src="/logo.png" alt="Agri-Opt" className="header-logo-img" />
         <span className="header-logo-text">AGRI-OPT</span>
       </div>
 

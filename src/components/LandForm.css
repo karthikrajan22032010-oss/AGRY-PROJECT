@@ -116,6 +116,30 @@
   border-top: 1px solid var(--border-green);
 }
 
+.input-with-btn {
+  display: flex;
+  gap: 8px;
+}
+
+.search-btn-mini {
+  background: var(--green-primary);
+  border: none;
+  color: black;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 0 16px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.search-btn-mini:hover {
+  background: var(--green-bright);
+  box-shadow: 0 0 12px var(--green-glow);
+  transform: translateY(-1px);
+}
+
 /* ─── Plot type ─── */
 .plot-type-toggle {
   display: flex;
@@ -527,4 +551,16 @@
 @media (max-width: 900px) {
   .land-form-grid { grid-template-columns: 1fr; }
   .area-result-grid { grid-template-columns: repeat(2, 1fr); }
+  .coord-row { grid-template-columns: 1fr; }
+  .dim-row { grid-template-columns: 1fr; }
+  .loc-actions { flex-direction: column; }
+  .submit-big { width: 100%; padding: 16px 20px; }
+  .land-form-page { padding: 16px 12px; }
+  .map-preview { height: 200px; }
+}
+
+@media (max-width: 480px) {
+  .area-result-grid { grid-template-columns: 1fr; }
+  .plot-type-toggle { flex-direction: column; }
+  .card-title { font-size: 0.95rem; }
 }

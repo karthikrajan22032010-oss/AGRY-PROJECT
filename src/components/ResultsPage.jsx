@@ -140,8 +140,8 @@ export default function ResultsPage({ landData }) {
         </div>
         <div className="results-meta">
           📍 {landData.locationName || `${landData.lat}, ${landData.lon}`} •
-          📐 {parseFloat(landData.sqFt).toLocaleString()} sq ft ({landData.acres} acres) •
-          🕐 {new Date().toLocaleString('en-IN')}
+          📐 {parseFloat(landData.sqFt).toLocaleString()} {t('sqFt')} ({landData.acres} {t('acres')}) •
+          🕐 {new Date().toLocaleString(lang === 'ta' ? 'ta-IN' : lang === 'hi' ? 'hi-IN' : 'en-IN')}
         </div>
       </div>
 
@@ -156,21 +156,21 @@ export default function ResultsPage({ landData }) {
           <div className="detail-list">
             <div className="detail-row">
               <span className="detail-key">
-                {lang === 'ta' ? 'தேர்ந்தெடுக்கப்பட்ட பகுதி' : lang === 'hi' ? 'चयनित क्षेत्र' : 'Selected Area'}
+                {t('selectedArea')}
               </span>
-              <span className="detail-val">Mobile {landData.fullPhone || '9080404579'} • Loc: {landData.lat || '11.719'}, {landData.lon || '77.2701'}</span>
+              <span className="detail-val">{t('mobile')} {landData.fullPhone || '9080404579'} • {t('loc')}: {landData.lat || '11.719'}, {landData.lon || '77.2701'}</span>
             </div>
             <div className="detail-row">
               <span className="detail-key">{t('landType')}</span>
-              <span className="detail-val neon">{landType}</span>
+              <span className="detail-val neon">{t(landType)}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Area</span>
-              <span className="detail-val">{parseFloat(landData.sqFt).toLocaleString()} sq ft / {landData.acres} acres / {landData.cents} cents</span>
+              <span className="detail-key">{t('area')}</span>
+              <span className="detail-val">{parseFloat(landData.sqFt).toLocaleString()} {t('sqFt')} / {landData.acres} {t('acres')} / {landData.cents} {t('cents')}</span>
             </div>
             <div className="detail-row">
               <span className="detail-key">{t('fieldSlope')}</span>
-              <span className="detail-val">{landData.slope}</span>
+              <span className="detail-val">{t(landData.slope)}</span>
             </div>
             <div className="detail-row">
               <span className="detail-key">{t('groundWater')}</span>
@@ -192,27 +192,27 @@ export default function ResultsPage({ landData }) {
           <div className="soil-badge">
             <div className="soil-icon">🪨</div>
             <div>
-              <div className="soil-name">{landData.soilType}</div>
+              <div className="soil-name">{t(landData.soilType)}</div>
               <div className="soil-ph">pH Range: {fertData.ph}</div>
             </div>
           </div>
           <div className="detail-list mt-2">
             <div className="detail-row">
-              <span className="detail-key">Water Retention</span>
+              <span className="detail-key">{t('waterRetention')}</span>
               <span className="detail-val">
-                {landData.soilType.includes('Clay') || landData.soilType.includes('Black') ? 'High' :
-                 landData.soilType.includes('Sandy') ? 'Low' : 'Medium'}
+                {landData.soilType.includes('Clay') || landData.soilType.includes('Black') ? t('high') :
+                 landData.soilType.includes('Sandy') ? t('low') : t('medium')}
               </span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Organic Matter</span>
-              <span className="detail-val neon">Medium — 2.3%</span>
+              <span className="detail-key">{t('organicMatter')}</span>
+              <span className="detail-val neon">{t('medium')} — 2.3%</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Drainage</span>
+              <span className="detail-key">{t('drainage')}</span>
               <span className="detail-val">
                 {landData.soilType.includes('Sandy') ? 'Well drained' :
-                 landData.soilType.includes('Clay') ? 'Poor drainage' : 'Moderate'}
+                 landData.soilType.includes('Clay') ? 'Poor drainage' : t('medium')}
               </span>
             </div>
           </div>
@@ -228,26 +228,26 @@ export default function ResultsPage({ landData }) {
               <div className="slope-line" style={{
                 transform: `rotate(-${landData.slope.includes('0-1') ? 2 : landData.slope.includes('2-3') ? 6 : landData.slope.includes('4-6') ? 12 : 20}deg)`
               }} />
-              <span className="slope-label">{landData.slope}</span>
+              <span className="slope-label">{t(landData.slope)}</span>
             </div>
           </div>
           <div className="detail-list mt-2">
             <div className="detail-row">
-              <span className="detail-key">Erosion Risk</span>
+              <span className="detail-key">{t('erosionRisk')}</span>
               <span className={`detail-val ${landData.slope.includes('Steep') ? 'text-red' : 'neon'}`}>
-                {landData.slope.includes('0-1') ? 'Very Low' : landData.slope.includes('2-3') ? 'Low' : landData.slope.includes('4-6') ? 'Medium' : 'High'}
+                {landData.slope.includes('0-1') ? t('vLow') : landData.slope.includes('2-3') ? t('low') : landData.slope.includes('4-6') ? t('medium') : t('high')}
               </span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Irrigation Method</span>
+              <span className="detail-key">{t('irrigationMethod')}</span>
               <span className="detail-val">
                 {landData.slope.includes('0-1') ? 'Flood/Drip' : landData.slope.includes('2-3') ? 'Sprinkler/Drip' : 'Contour Bunding'}
               </span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Bund Needed</span>
+              <span className="detail-key">{t('bundNeeded')}</span>
               <span className="detail-val neon">
-                {landData.slope.includes('0-1') ? 'No' : landData.slope.includes('2-3') ? 'Optional' : 'Yes — Mandatory'}
+                {landData.slope.includes('0-1') ? t('no') : landData.slope.includes('2-3') ? t('optional') : t('yes') + ' — ' + t('mandatory')}
               </span>
             </div>
           </div>
@@ -278,15 +278,15 @@ export default function ResultsPage({ landData }) {
           </div>
           <div className="detail-list mt-2">
             <div className="detail-row">
-              <span className="detail-key">Base Treatment</span>
+              <span className="detail-key">{t('baseTreatment')}</span>
               <span className="detail-val">{fertData.base}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Micro-nutrients</span>
+              <span className="detail-key">{t('microNutrients')}</span>
               <span className="detail-val">Zinc 10kg + Boron 2kg/acre</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Bio-fertilizer</span>
+              <span className="detail-key">{t('bioFertilizer')}</span>
               <span className="detail-val neon">Rhizobium + Azospirillum</span>
             </div>
           </div>
@@ -302,22 +302,22 @@ export default function ResultsPage({ landData }) {
               {encr.color === 'green' ? '🛡' : encr.color === 'yellow' ? '⚠' : '🚨'}
             </div>
             <div>
-              <div className="security-status">{encr.status}</div>
-              <div className="security-detail">{encr.detail}</div>
+              <div className="security-status">{t(encr.status)}</div>
+              <div className="security-detail">{t(encr.detail)}</div>
             </div>
           </div>
           <div className="detail-list mt-2">
             <div className="detail-row">
-              <span className="detail-key">Encroachment Risk</span>
-              <span className={`detail-val text-${encr.color === 'green' ? 'neon' : encr.color}`}>{encr.risk}</span>
+              <span className="detail-key">{t('encroachment')}</span>
+              <span className={`detail-val text-${encr.color === 'green' ? 'neon' : encr.color}`}>{t(encr.risk)}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Survey No.</span>
+              <span className="detail-key">{t('surveyNo')}</span>
               <span className="detail-val">Auto-detect required</span>
             </div>
             <div className="detail-row">
-              <span className="detail-key">Land Use</span>
-              <span className="detail-val neon">{landType}</span>
+              <span className="detail-key">{t('landUse')}</span>
+              <span className="detail-val neon">{t(landType)}</span>
             </div>
           </div>
         </div>
@@ -331,11 +331,11 @@ export default function ResultsPage({ landData }) {
             <table className="agri-table">
               <thead>
                 <tr>
-                  <th>{lang === 'ta' ? 'பயிர் / தாவரம்' : lang === 'hi' ? 'फसल / पौधा' : t('crop')}</th>
-                  <th>{lang === 'ta' ? 'உரம் (தினசரி)' : lang === 'hi' ? 'उर्वरक (दैनिक)' : t('fertilizerDaily')}</th>
-                  <th>{lang === 'ta' ? 'தண்ணீர் (மணிக்கு)' : lang === 'hi' ? 'पानी (प्रति घंटा)' : t('waterHourly')}</th>
-                  <th>{lang === 'ta' ? 'புல் பராமரிப்பு' : lang === 'hi' ? 'घास देखभाल' : t('grassMaint')}</th>
-                  <th>{lang === 'ta' ? 'பருவகாலம்' : lang === 'hi' ? 'मौसम' : 'Season'}</th>
+                  <th>{t('crop')}</th>
+                  <th>{t('fertilizerDaily')}</th>
+                  <th>{t('waterHourly')}</th>
+                  <th>{t('grassMaint')}</th>
+                  <th>{t('season')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -343,11 +343,11 @@ export default function ResultsPage({ landData }) {
                   const d = CROP_SCHEDULE[crop] || { fert: '150g/day', water: '5L/hour', grass: 'Monthly', season: 'All year' };
                   return (
                     <tr key={crop}>
-                      <td><span className="crop-name">🌱 {crop}</span></td>
+                      <td><span className="crop-name">🌱 {t(crop)}</span></td>
                       <td><span className="neon">{d.fert}</span></td>
                       <td><span style={{ color: '#00aaff' }}>💧 {d.water}</span></td>
-                      <td>{d.grass}</td>
-                      <td><span className="tag">{d.season}</span></td>
+                      <td>{t(d.grass)}</td>
+                      <td><span className="tag">{t(d.season)}</span></td>
                     </tr>
                   );
                 })}

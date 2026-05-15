@@ -78,22 +78,46 @@ export default function LandForm({ onSubmit }) {
     }
     navigator.geolocation.getCurrentPosition(
       async ({ coords: { latitude, longitude } }) => {
-        let name = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        let name = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
         try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+          // Use a more detailed address lookup with zoom level 18 for exactness
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`);
           const d = await r.json();
-          name = [d.address?.village, d.address?.state_district, d.address?.state].filter(Boolean).join(', ');
+          const addr = d.address || {};
+          
+          // Formulate a very exact address string
+          const parts = [
+            addr.road || addr.suburb || addr.neighbourhood,
+            addr.village || addr.town || addr.city_district,
+            addr.county || addr.state_district,
+            addr.state,
+            addr.postcode
+          ].filter(Boolean);
+          
+          name = parts.join(', ');
         } catch {}
         setForm(p => ({ ...p, lat: latitude.toFixed(6), lon: longitude.toFixed(6), locationName: name }));
         setLocLoading(false);
       },
-      () => { setLocError('Could not get location. Enter manually.'); setLocLoading(false); }
+      () => { setLocError('Could not get exact location. Enter manually.'); setLocLoading(false); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Force high accuracy GPS
     );
   };
 
   const openGoogleMaps = () => {
-    const q = form.lat && form.lon ? `${form.lat},${form.lon}` : form.locationName || 'Tamil Nadu Agriculture';
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, '_blank');
+    // Priority: 1. Coordinates (Exact), 2. Location Name (General)
+    let q = '';
+    if (form.lat && form.lon) {
+      q = `${form.lat},${form.lon}`;
+    } else if (form.locationName) {
+      q = form.locationName;
+    } else {
+      q = 'Tamil Nadu Agriculture';
+    }
+    
+    // Using a more reliable Google Maps URL format for coordinates
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+    window.open(url, '_blank');
   };
 
   /* ── Image upload + Gemini Vision analysis ── */
@@ -215,12 +239,31 @@ Reply in JSON format: {"soilType":"...","condition":"...","crops":["..."],"slope
 
           {locError && <div className="loc-error">⚠ {locError}</div>}
 
-          <div className="form-group">
+          <div className="form-group search-loc-group">
             <label className="form-label">🏘 Location Name / Village / District</label>
-            <input id="field-location-name" className="input-field location-big-input"
-              placeholder="e.g. Coimbatore, Tamil Nadu or Village name..."
-              value={form.locationName}
-              onChange={f('locationName')} />
+            <div className="input-with-btn">
+              <input id="field-location-name" className="input-field location-big-input"
+                placeholder="e.g. Kovilpatti, Tamil Nadu or Village name..."
+                value={form.locationName}
+                onChange={f('locationName')} />
+              <button className="search-btn-mini" onClick={async () => {
+                if (!form.locationName) return;
+                setLocLoading(true);
+                try {
+                  const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(form.locationName)}&format=json&limit=1`);
+                  const d = await r.json();
+                  if (d.length) {
+                    setForm(p => ({ ...p, lat: parseFloat(d[0].lat).toFixed(6), lon: parseFloat(d[0].lon).toFixed(6) }));
+                  } else {
+                    setLocError('Could not find this address. Try coordinates.');
+                  }
+                } catch {
+                  setLocError('Search service unavailable.');
+                } finally {
+                  setLocLoading(false);
+                }
+              }}>🔍 {t('search') || 'Search'}</button>
+            </div>
           </div>
 
           <div className="coord-row">
@@ -242,7 +285,7 @@ Reply in JSON format: {"soilType":"...","condition":"...","crops":["..."],"slope
               <iframe
                 title="Land Location"
                 className="map-preview"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(form.lon)-0.01},${parseFloat(form.lat)-0.01},${parseFloat(form.lon)+0.01},${parseFloat(form.lat)+0.01}&layer=mapnik&marker=${form.lat},${form.lon}`}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(form.lon)-0.005},${parseFloat(form.lat)-0.005},${parseFloat(form.lon)+0.005},${parseFloat(form.lat)+0.005}&layer=mapnik&marker=${form.lat},${form.lon}`}
                 loading="lazy"
               />
               <div className="map-label">📍 {form.locationName || `${form.lat}, ${form.lon}`}</div>

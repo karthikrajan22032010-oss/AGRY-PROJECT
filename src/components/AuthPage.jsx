@@ -83,7 +83,7 @@ export default function AuthPage({ onLogin }) {
         {/* ── Left panel ── */}
         <div className="auth-left">
           <div className="auth-logo-wrap">
-            <div className="auth-logo-icon">🌾</div>
+            <img src="/logo.png" alt="Agri-Opt" className="auth-logo-img" />
             <h1 className="auth-logo-name">AGRI-OPT</h1>
           </div>
           <h2 className="auth-welcome">
