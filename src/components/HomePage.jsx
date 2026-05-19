@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLang } from '../context/LangContext';
+import NewsAlerts from './NewsAlerts';
 import './HomePage.css';
 
 const STATS = [
@@ -23,30 +24,11 @@ export default function HomePage({ setPage, user }) {
 
   return (
     <div className={`home-page ${langClass}`}>
+      <NewsAlerts />
       {/* Hero */}
       <section className="hero-section">
-        <div className="hero-bg-overlay" />
-        <div className="hero-particles">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="hero-particle" style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${3 + Math.random() * 4}s`,
-              fontSize: `${0.8 + Math.random()}rem`,
-              opacity: 0.15 + Math.random() * 0.3,
-            }}>
-              {['🌿', '🌱', '🍃', '🌾', '🌻', '🌳'][Math.floor(Math.random() * 6)]}
-            </div>
-          ))}
-        </div>
-
+        {/* Local overlays removed to show beautiful global background */}
         <div className="hero-content">
-          <div className="hero-badge">
-            <span className="status-dot" />
-            <span>AI-Powered Agricultural Intelligence System</span>
-          </div>
-
           <h1 className="hero-title">
             {lang === 'ta'
               ? <><span className="hero-title-green">அக்ரி-ஆப்ட்</span><br />உங்கள் நிலத்தை புரிந்துகொள்</>

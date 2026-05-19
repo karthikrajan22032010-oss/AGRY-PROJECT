@@ -2,52 +2,62 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLang } from '../context/LangContext';
 import './ChatBot.css';
 
-const GEMINI_KEY = 'AIzaSyAeIETs3_B6wPJo8dWE_HLn0hdIt6jByCk';
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY || 'AIzaSyAeIETs3_B6wPJo8dWE_HLn0hdIt6jByCk';
 
-const SYSTEM_PROMPT = `You are the Agri-Opt Professional AI Assistant — a world-class agricultural scientist and field expert.
-Your training includes:
-- **Expert Diagnostics**: Analyze descriptions of leaves, stems, or soil to diagnose pests (like stem borer, whitefly) or diseases (blight, rust).
-- **Precision Fertilization**: Provide exact NPK ratios and organic alternatives (Panchagavya, Jeevamrutha) based on crop stages.
-- **Water Wisdom**: Expert on Drip, Sprinkler, and Solar-pumping systems. Advise on water conservation.
-- **Market Intelligence**: Guide on MSP, current mandi trends, and post-harvest storage.
-- **Regional Specialization**:
-  - South India: Deep knowledge of Cauvery Delta, Western Ghats, and dryland farming in TN.
-  - North India: Expertise in Wheat-Rice cycles, Sugarcane belts, and organic farming in hilly regions.
-- **Government Liaison**: Expert on PM-KISAN, e-NAM, and state-specific subsidies.
+const SYSTEM_PROMPT = `You are an AI chatbot for this website. 
+You must ONLY answer questions using the text from the "Flowering Trees" book provided below.
 
-**Tone & Language**:
-- Be professional, empathetic, and highly actionable.
-- TRILINGUAL MASTERY: 
-  - If the user writes in TAMIL, respond in professional yet accessible Tamil (தமிழ்).
-  - If the user writes in HINDI, respond in professional Hindi (हिंदी).
-  - Otherwise, respond in English.
-- Use bullet points for steps and bold text for key terms.
-- Always encourage sustainable and high-yield practices.`;
+STRICT RULES:
+1. DO NOT use your outside knowledge.
+2. DO NOT search the internet like Google.
+3. If the answer is NOT in the book text below, you must reply: "I am sorry, I only have information about the Flowering Trees book."
+4. If the user asks in Tamil, answer in Tamil. If they ask in English, answer in English. If in Hindi, answer in Hindi.
+
+Book Text:
+- **Trees**:
+  - *Gulmohur (Delonix regia)*: Crimson/scarlet flowers in huge clusters, fern-like bipinnate leaves. Blooms April-June.
+  - *Flame of the Forest (Butea monosperma)*: Palas/Dhak. Bright orange-red flowers on leafless branches, looks like fire. Dyes and tanning.
+  - *Indian Coral Tree (Erythrina indica)*: Mandar. Spiny branches, dense spikes of scarlet/red flowers. Blooms February-March.
+  - *Golden Shower / Amaltas (Cassia fistula)*: Hanging yellow flowers, long cylindrical pods. Blooms April-May. Highly drought resistant.
+  - *Pride of India (Lagerstroemia speciosa)*: Queen's Flower. Mauve/purple crinkled petals. Blooms April-June.
+  - *Asoka Tree (Saraca asoca)*: True Asoka. Orange-scarlet fragrant clusters, lance-shaped leaves. Blooms February-April.
+  - *Colville's Glory (Colvillea racemosa)*: Orange-scarlet flower buds like grape bunches. Blooms September-October.
+  - *Kachnar (Bauhinia variegata)*: Orchid-like purple, pink, or white flowers, two-lobed camel-foot leaves. Edible flower buds.
+  - *Pagoda Tree / Frangipani (Plumeria acutifolia)*: Champa. Sweet-scented white flowers with yellow centers, milky latex sap.
+  - *Jacaranda (Jacaranda mimosaefolia)*: Mauve-blue tubular bells, delicate bipinnate leaves. Blooms March-May.
+  - *Teak (Tectona grandis)*: Stately tree, massive leaves, white panicle flowers. Premium timber.
+  - *Baobab (Adansonia digitata)*: Massive water-storing trunk, white hanging flowers. Extremely long-lived.
+- **Shrubs & Flora**:
+  - *Bougainvillea (Bougainvillea spectabilis)*: Woody climber with vibrant paper-like bracts (purple, magenta, orange, white).
+  - *Hibiscus (Hibiscus rosa-sinensis)*: China Rose / Gudhal. Crimson blooms, serrated leaves. Used for hair care and worship.
+  - *Jungle Flame (Ixora coccinea)*: Small shrubs with dense round heads of scarlet, yellow, or pink tubular flowers.
+  - *Oleander (Nerium oleander)*: Kaner. Double/single pink or white fragrant flowers. Toxic latex, very hardy.
+  - *Yellow Oleander (Thevetia neriifolia)*: Pila Kaner. Bell-shaped yellow fragrant flowers, lance-like leaves.`;
 
 const QUICK_QUESTIONS = {
   en: [
-    '🌾 Which crops suit Red Loamy soil?',
-    '💧 How much water does Paddy need?',
-    '🌦 Will rain affect my crop this week?',
-    '🪨 Best fertilizer for Black Cotton soil?',
-    '🐛 How to control pests organically?',
-    '📈 Current MSP for Wheat?',
+    '🌸 Tell me about the Gulmohur tree.',
+    '🔥 What is the Flame of the Forest?',
+    '🏵 Tell me about the Asoka tree.',
+    '🌼 What does the book say about Jacaranda?',
+    '💮 Tell me about Pagoda/Frangipani tree.',
+    '🌾 What is the Golden Shower / Amaltas?',
   ],
   ta: [
-    '🌾 சிவப்பு மண்ணுக்கு எந்த பயிர்?',
-    '💧 நெல்லுக்கு எவ்வளவு தண்ணீர்?',
-    '🌦 இந்த வாரம் மழை பயிரை பாதிக்குமா?',
-    '🪨 கருப்பு மண்ணுக்கு சிறந்த உரம்?',
-    '🐛 இயற்கையாக பூச்சியை கட்டுப்படுத்துவது எப்படி?',
-    '📈 கோதுமை MSP என்ன?',
+    '🌸 குல்மோஹர் மரம் பற்றி கூறவும்.',
+    '🔥 காட்டு சுடர் (பிளேம் ஆஃப் தி பாரஸ்ட்) என்றால் என்ன?',
+    '🏵 அசோக மரம் பற்றி கூறவும்.',
+    '🌼 ஜகராண்டா பற்றி புத்தகம் என்ன கூறுகிறது?',
+    '💮 சம்பா (பிராங்கிபானி) மரம் பற்றி கூறவும்.',
+    '🌾 கொன்றை (அமல்தாஸ்) மரம் என்றால் என்ன?',
   ],
   hi: [
-    '🌾 लाल मिट्टी में कौन सी फसल उगाएं?',
-    '💧 धान को कितना पानी चाहिए?',
-    '🌦 क्या इस हफ्ते बारिश फसल को नुकसान करेगी?',
-    '🪨 काली मिट्टी के लिए सबसे अच्छा उर्वरक?',
-    '🐛 जैविक तरीके से कीट नियंत्रण कैसे करें?',
-    '📈 गेहूं का MSP क्या है?',
+    '🌸 गुलमोहर पेड़ के बारे में बताएं।',
+    '🔥 फ्लेम ऑफ द फॉरेस्ट क्या है?',
+    '🏵 अशोक पेड़ के बारे में बताएं।',
+    '🌼 जकारैंडा के बारे में पुस्तक क्या कहती है?',
+    '💮 चम्पा (फ्रेंगिपानी) पेड़ के बारे में बताएं।',
+    '🌾 अमलतास पेड़ क्या है?',
   ],
 };
 
@@ -58,7 +68,7 @@ async function callGemini(messages) {
   }));
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,8 +76,8 @@ async function callGemini(messages) {
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents,
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1024,
+          temperature: 0.0,
+          maxOutputTokens: 256,
           topP: 0.9,
         },
       }),
@@ -83,59 +93,168 @@ async function callGemini(messages) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, no response generated.';
 }
 
-// Local fallback for common queries (A-Z Trilingual)
+// Global Agricultural Knowledge Base (Flowering Trees Book Strict Fallback)
 function localFallback(q) {
   const lower = q.toLowerCase();
   
-  // English Keywords
-  const isEn = (k) => lower.includes(k);
-  // Tamil Keywords
-  const isTa = (k) => lower.includes(k) || /[\u0B80-\u0BFF]/.test(q);
-  // Hindi Keywords
-  const isHi = (k) => lower.includes(k) || /[\u0900-\u097F]/.test(q);
+  // Keyword checking helpers
+  const has = (k) => lower.includes(k);
+  const isTa = () => /[\u0B80-\u0BFF]/.test(q) || has('tamil') || has('தமிழ்');
+  const isHi = () => /[\u0900-\u097F]/.test(q) || has('hindi') || has('हिंदी');
 
-  if (isEn('paddy') || isEn('rice') || isTa('நெல்') || isHi('धान')) {
-    return '🌾 **Paddy/Rice Guide:**\n- Water: 1200-1500mm total\n- Fertilizer: 100:50:50 NPK kg/ha\n- Pest: Stem borer — use Chlorantraniliprole\n- Season: Kharif (June), Rabi (Nov)';
-  }
-  
-  if (isEn('soil') || isTa('மண்') || isHi('मिट्टी')) {
-    return '🪨 **Soil Health:**\n- Red Soil: Good for groundnut/millets. Needs organic matter.\n- Black Soil: Holds water well. Best for cotton/wheat.\n- Loamy: Perfect for most crops. Keep pH 6.5-7.5.';
+  // Flowering Trees & Shrubs in India
+  if (has('gulmohur') || has('gul mohr') || has('flame of the forest') || has('asoka') || has('frangipani') || has('champa') || has('jacaranda') || has('kaner') || has('bougainvillea') || has('kachnar') || has('amaltas') || has('coral tree') || has('pride of india') || has('colville') || has('teak') || has('baobab') || has('hibiscus') || has('gudhal') || has('ixora')) {
+    if (isTa()) return '🌸 **டி. வி. கோவன் புத்தகக் குறிப்பு (ஆஃப்லைன்):**\n- **குல்மோஹர்**: சித்திராபதி வண்ண மலர்கள், ஏப்ரல்-ஜூன் பூக்கும்.\n- **அசோக மரம்**: ஆரஞ்சு-சிவப்பு நறுமண மலர்கள்.\n- **சம்பா (பிராங்கிபானி)**: நறுமண வெள்ளை மலர்கள்.\n- **காஞ்சனார்**: ஒட்டகக் கால் வடிவ இலைகள், ஊதா/வெள்ளை பூக்கள்.';
+    if (isHi()) return '🌸 **डी. वी. कोवेन पुस्तक संदर्भ (ऑफ़लाइन):**\n- **गुलमोहर**: अप्रैल-जून में लाल-नारंगी फूल आते हैं।\n- **अशोक**: सुगंधित लाल-नारंगी फूलों के गुच्छे।\n- **चम्पा (फ्रेंगिपानी)**: सुगंधित सफेद-पीले फूल।\n- **कचनार**: दो-तरफा ऊँट के पैर जैसे पत्ते, बैंगनी या सफेद फूल।';
+    return '🌸 **D. V. Cowen Botanical Reference (Offline):**\n- **Gulmohur**: Crimson/scarlet flowers in huge clusters. Blooms April-June.\n- **Flame of the Forest**: Bright orange-red flowers cluster on leafless branches.\n- **Asoka Tree**: Sacred fragrant orange-scarlet clusters.\n- **Frangipani/Champa**: Fragrant white-yellow offering flowers.';
   }
 
-  if (isEn('pest') || isEn('insect') || isTa('பூச்சி') || isHi('कीट')) {
-    return '🐛 **Pest Control:**\n- Organic: Neem oil (3ml/L) or Ginger-Garlic extract.\n- Chemical: Consult local AO before using pesticides.\n- Traps: Use yellow sticky traps for whitefly.';
-  }
-
-  if (isEn('scheme') || isEn('subsidy') || isTa('திட்டம்') || isHi('योजना')) {
-    return '📊 **Govt Schemes:**\n- PM-KISAN: ₹6000/year for landholders.\n- PMFBY: Crop insurance against natural disasters.\n- KCC: Low-interest loans for farmers.';
-  }
-
-  if (isEn('water') || isEn('drip') || isTa('தண்ணீர்') || isHi('पानी')) {
-    return '💧 **Water Management:**\n- Drip Irrigation: Saves 40-70% water.\n- Fertigation: Mix fertilizer in drip for better yield.\n- Timing: Water in early morning to reduce evaporation.';
-  }
-
-  return '🤖 I am your Agri AI Assistant. I can help with crops, soil, water, and pests in English, Tamil, and Hindi! (Limited mode: API Offline)';
+  // Refusal for everything else
+  if (isTa()) return 'மன்னிக்கவும், என்னிடம் பூக்கும் மரங்கள் புத்தகத்தைப் பற்றிய தகவல்கள் மட்டுமே உள்ளன.';
+  if (isHi()) return 'मुझे खेद है, मेरे पास केवल फ्लावरिंग ट्री बुक के बारे में जानकारी है।';
+  return 'I am sorry, I only have information about the Flowering Trees book.';
 }
 
 export default function ChatBot({ landData }) {
   const { t, lang, langClass } = useLang();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: '👋 Hello! I am your **Agri-Opt Pro Voice Assistant**. I\'ve analyzed your land data and I\'m ready to help!\n\n**Training & Skills:**\n🌾 Precision Crop Selection\n💧 Smart Irrigation & Drip Systems\n🪨 Expert Soil Health (NPK/Organic)\n📊 Live Market Prices & Govt Schemes\n🎤 **Voice Mode**: Speak to me in **English, தமிழ், or हिंदी!**\n\nTry clicking the 🎤 icon to start a voice conversation!',
-      time: new Date(),
+  const [showCredentials, setShowCredentials] = useState(false);
+
+  // 🤖 Dynamic Intelligence Core (Flowering Trees Book Specialist)
+  const intelligenceReport = {
+    model: 'Flowering Trees Book Specialist (AI)',
+    training: 'Flowering Trees & Shrubs in India by D. V. Cowen',
+    lastUpdate: 'Strict Local Scope active',
+    languages: 'English, Tamil (தமிழ்), Hindi (हिंदी)',
+    specialty: 'Indian Flowering Trees, Shrubs & Flora Botany'
+  };
+  const getGreeting = (l) => {
+    if (l === 'ta') return '👋 வணக்கம்! நான் உங்கள் **மலர் மற்றும் தாவர AI**. என்னிடம் டி. வி. கோவனின் "பூக்கும் மரங்கள்" புத்தகத்தைப் பற்றி எதையும் கேளுங்கள்.';
+    if (l === 'hi') return '👋 नमस्ते! मैं आपका **पुष्प और वृक्ष AI** हूँ। मुझसे डी. वी. कोवेन की "फ्लावरिंग ट्रीज़" पुस्तक के बारे में कुछ भी पूछें।';
+    return '👋 Hello! I am your **Flowering Trees & Botany AI**. Ask me anything about D. V. Cowen\'s book "Flowering Trees & Shrubs in India".';
+  };
+
+  const currentUser = JSON.parse(localStorage.getItem('agri_currentUser') || '{}');
+  const username = currentUser.username || 'guest';
+
+  const [messages, setMessages] = useState([{
+    role: 'assistant',
+    content: getGreeting(lang),
+    time: new Date(),
+  }]);
+
+  // Load chat history from MongoDB on mount/user change
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!username || username === 'guest') return;
+      try {
+        const res = await fetch(`http://localhost:5001/api/chat/${username}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            setMessages(data.map(m => ({ ...m, time: new Date(m.time) })));
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load chat history from database:', err);
+      }
+    };
+    fetchHistory();
+  }, [username]);
+
+  // Save helper to store message in database
+  const saveMessageToDb = async (role, content) => {
+    if (!username || username === 'guest') return;
+    try {
+      await fetch('http://localhost:5001/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, role, content, time: new Date() })
+      });
+    } catch (err) {
+      console.warn('Failed to save message to database:', err);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 1) {
+        return [{ ...prev[0], content: getGreeting(lang) }];
+      }
+      return prev;
+    });
+  }, [lang]);
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [speakingId, setSpeakingId] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [isVideoCall, setIsVideoCall] = useState(false);
+  
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
   const recognitionRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const isVideoCallRef = useRef(isVideoCall);
+  const isListeningRef = useRef(isListening);
+  const langRef = useRef(lang);
+  const loadingRef = useRef(loading);
+
+  useEffect(() => { isVideoCallRef.current = isVideoCall; }, [isVideoCall]);
+  useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
+  useEffect(() => { langRef.current = lang; }, [lang]);
+  useEffect(() => { loadingRef.current = loading; }, [loading]);
+
+  const startVideoCall = async () => {
+    setIsVideoCall(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 320, height: 240 }, 
+        audio: true 
+      });
+      streamRef.current = stream;
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+      
+      // Auto-start voice recognition in video call
+      setTimeout(() => {
+        if (recognitionRef.current && !isListening) {
+          recognitionRef.current.lang = lang === 'ta' ? 'ta-IN' : lang === 'hi' ? 'hi-IN' : 'en-IN';
+          try {
+            recognitionRef.current.start();
+            setIsListening(true);
+          } catch (err) {
+            console.warn('Recognition auto-start failed:', err);
+          }
+        }
+      }, 800);
+    } catch (err) {
+      console.warn("Camera/Mic access denied:", err);
+    }
+  };
+
+  const stopVideoCall = () => {
+    setIsVideoCall(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (speakingId !== null) {
+      synthRef.current.cancel();
+      setSpeakingId(null);
+    }
+    if (isListening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch (err) {}
+      setIsListening(false);
+    }
+  };
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -160,6 +279,9 @@ export default function ChatBot({ landData }) {
 
     return () => {
       synthRef.current?.cancel();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
     };
   }, []);
 
@@ -203,8 +325,25 @@ export default function ChatBot({ landData }) {
     const voice = voices.find(v => v.lang.startsWith(langCode.split('-')[0])) || voices.find(v => v.lang.startsWith('en'));
     if (voice) utter.voice = voice;
 
-    utter.onend = () => setSpeakingId(null);
-    utter.onerror = () => setSpeakingId(null);
+    const handleSpeechEnd = () => {
+      setSpeakingId(null);
+      if (isVideoCallRef.current) {
+        setTimeout(() => {
+          if (recognitionRef.current && !isListeningRef.current && !loadingRef.current) {
+            recognitionRef.current.lang = langRef.current === 'ta' ? 'ta-IN' : langRef.current === 'hi' ? 'hi-IN' : 'en-IN';
+            try {
+              recognitionRef.current.start();
+              setIsListening(true);
+            } catch (err) {
+              console.warn("Recognition start fail:", err);
+            }
+          }
+        }, 600);
+      }
+    };
+
+    utter.onend = handleSpeechEnd;
+    utter.onerror = handleSpeechEnd;
 
     if (id !== null) setSpeakingId(id);
     synthRef.current.speak(utter);
@@ -218,6 +357,7 @@ export default function ChatBot({ landData }) {
     const userMsg = { role: 'user', content: q, time: new Date() };
     const history = [...messages, userMsg];
     setMessages(history);
+    saveMessageToDb('user', q);
     setLoading(true);
 
     try {
@@ -233,9 +373,10 @@ export default function ChatBot({ landData }) {
       const reply = await callGemini(apiMessages);
       const newMsg = { role: 'assistant', content: reply, time: new Date() };
       setMessages(prev => [...prev, newMsg]);
+      saveMessageToDb('assistant', reply);
       
       // Automatic Voice Assistant Response
-      if (fromVoice || isVoiceMode) {
+      if (fromVoice || isVoiceMode || isVideoCall) {
         setTimeout(() => speakMessage(reply, history.length), 300);
         setIsVoiceMode(false);
       }
@@ -244,7 +385,8 @@ export default function ChatBot({ landData }) {
       const fallback = localFallback(q);
       const newMsg = { role: 'assistant', content: fallback, time: new Date(), isFallback: true };
       setMessages(prev => [...prev, newMsg]);
-      if (fromVoice || isVoiceMode) {
+      saveMessageToDb('assistant', fallback);
+      if (fromVoice || isVoiceMode || isVideoCall) {
         setTimeout(() => speakMessage(fallback, history.length), 300);
         setIsVoiceMode(false);
       }
@@ -295,107 +437,178 @@ export default function ChatBot({ landData }) {
         <div className={`chatbot-window ${langClass}`}>
           {/* Header */}
           <div className="chat-header">
-            <div className="chat-header-left">
-              <div className="chat-avatar">🤖</div>
+            <div className="header-info">
+              <div className="bot-avatar">🤖</div>
               <div>
-                <div className="chat-title">{t('aiAssistant')}</div>
-                <div className="chat-status" id="chat-status-indicator">
-                  <span className="status-dot" />
-                  <span>AI Online • Gemini 2.0 Flash</span>
+                <h3 className="bot-name">AGRI-OPT Hyper-AI</h3>
+                <div className="bot-status">
+                  <span className="online-dot" /> 
+                  Online
                 </div>
               </div>
             </div>
-            <button className="chat-close" onClick={() => setOpen(false)} id="btn-chatbot-close">✕</button>
-          </div>
-
-          {/* Quick Questions */}
-          <div className="chat-quick">
-            {quickQuestions.map((q, i) => (
-              <button
-                key={i}
-                id={`quick-q-${i}`}
-                className="quick-q-btn"
-                onClick={() => send(q)}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button 
+                className={`video-call-btn-header ${isVideoCall ? 'active' : ''}`}
+                onClick={isVideoCall ? stopVideoCall : startVideoCall}
+                title="Start Video Call with AI"
+                style={{
+                  background: isVideoCall ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 255, 100, 0.1)',
+                  border: `1px solid ${isVideoCall ? '#ef4444' : 'var(--border-green)'}`,
+                  color: isVideoCall ? '#ff4d4d' : 'var(--green-primary)',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.2s'
+                }}
               >
-                {q}
+                {isVideoCall ? '⏹️ End' : '📹 Call'}
               </button>
-            ))}
+              <button className="chat-close" onClick={() => { stopVideoCall(); setOpen(false); }}>×</button>
+            </div>
           </div>
 
-          {/* Messages */}
-          <div className="chat-messages">
-            {messages.map((msg, i) => (
-              <div key={i} className={`chat-message ${msg.role}`}>
-                {msg.role === 'assistant' && (
-                  <div className="msg-avatar">🤖</div>
+          {isVideoCall ? (
+            <div className="chat-video-call-container">
+              {/* Virtual AI Avatar */}
+              <div className="video-avatar-main">
+                <div className={`avatar-glow-ring ${speakingId !== null ? 'pulse-speaking' : loading ? 'pulse-loading' : isListening ? 'pulse-listening' : ''}`} />
+                <div className="avatar-face">
+                  <div className="avatar-eye left"></div>
+                  <div className="avatar-eye right"></div>
+                  <div className="avatar-mouth"></div>
+                </div>
+                <div className="video-call-status">
+                  {speakingId !== null ? (lang === 'ta' ? 'AI பேசுகிறது...' : lang === 'hi' ? 'AI बोल रहा है...' : 'AI Speaking...') :
+                   loading ? (lang === 'ta' ? 'AI யோசிக்கிறது...' : lang === 'hi' ? 'AI सोच रहा है...' : 'AI Thinking...') :
+                   isListening ? (lang === 'ta' ? 'கேட்கிறது... பேசுங்கள்' : lang === 'hi' ? 'सुन रहा है... बोलिए' : 'Listening... Speak now') :
+                   (lang === 'ta' ? 'தயாராக உள்ளது' : lang === 'hi' ? 'तैयार है' : 'Ready')}
+                </div>
+              </div>
+
+              {/* Local User Pip (Webcam) */}
+              <div className="video-user-pip">
+                <video ref={localVideoRef} autoPlay playsInline muted className="pip-video-feed" />
+                <span className="pip-label">You</span>
+              </div>
+
+              {/* Speech Subtitles Text */}
+              <div className="video-subtitles">
+                {messages[messages.length - 1] && (
+                  <p className="subtitle-text">
+                    <strong>{messages[messages.length - 1].role === 'user' ? (lang === 'ta' ? 'நீங்கள்: ' : lang === 'hi' ? 'आप: ' : 'You: ') : 'AI: '}</strong>
+                    {messages[messages.length - 1].content.slice(0, 100)}
+                    {messages[messages.length - 1].content.length > 100 ? '...' : ''}
+                  </p>
                 )}
-                <div className="msg-bubble">
-                  <div className="msg-content-wrapper">
-                    <div className="msg-content">
-                      {renderMessage(msg.content)}
-                    </div>
-                    {msg.role === 'assistant' && (
-                      <button 
-                        className={`msg-speaker ${speakingId === i ? 'speaking' : ''}`} 
-                        onClick={() => speakMessage(msg.content, i)}
-                        title="Listen"
-                      >
-                        {speakingId === i ? '⏹️' : '🔊'}
-                      </button>
-                    )}
-                  </div>
-                  {msg.isFallback && (
-                    <div className="fallback-note">📴 Local response (API quota reached)</div>
-                  )}
-                  <div className="msg-time">
-                    {msg.time?.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
               </div>
-            ))}
-            {loading && (
-              <div className="chat-message assistant">
-                <div className="msg-avatar">🤖</div>
-                <div className="msg-bubble">
-                  <div className="typing-indicator">
-                    <span /><span /><span />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
 
-          {/* Input */}
-          <div className="chat-input-row">
-            <button 
-              className={`voice-input-btn ${isListening ? 'listening' : ''}`}
-              onClick={toggleListen}
-              title={isListening ? "Stop listening" : "Voice input"}
-              disabled={loading}
-            >
-              {isListening ? '🛑' : '🎤'}
-            </button>
-            <textarea
-              ref={inputRef}
-              id="chatbot-input"
-              className="chat-input"
-              placeholder={isListening ? "Listening..." : t('typeMessage')}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              rows={1}
-              disabled={loading}
-            />
-            <button
-              id="btn-chat-send"
-              className="chat-send-btn"
-              onClick={() => send()}
-              disabled={!input.trim() || loading}
-            >
-              {loading ? <span className="spinner-sm" /> : '➤'}
-            </button>
-          </div>
+              {/* Controls */}
+              <div className="video-call-controls">
+                <button className={`video-control-btn voice-btn ${isListening ? 'listening' : ''}`} onClick={toggleListen}>
+                  {isListening ? '🎙️ Mic Active' : '🔇 Mic Muted'}
+                </button>
+                <button className="video-control-btn end-btn" onClick={stopVideoCall}>
+                  🚪 Hang Up
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {showCredentials && (
+                <div className="intelligence-panel" style={{ animation: 'slideInDown 0.4s ease' }}>
+                  <h4>🧬 AI Intelligence Core</h4>
+                  <div className="intel-grid">
+                    <div className="intel-item"><span>Engine:</span> <strong>{intelligenceReport.model}</strong></div>
+                    <div className="intel-item"><span>Knowledge:</span> <strong>Google Search & Books</strong></div>
+                    <div className="intel-item"><span>Training:</span> <strong>Multi-modal Agri Expert</strong></div>
+                    <div className="intel-item"><span>Status:</span> <strong className="neon">Verified</strong></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Messages */}
+              <div className="chat-messages">
+                {messages.map((msg, i) => (
+                  <div key={i} className={`chat-message ${msg.role}`}>
+                    {msg.role === 'assistant' && (
+                      <div className="msg-avatar">🤖</div>
+                    )}
+                    <div className="msg-bubble">
+                      <div className="msg-content-wrapper">
+                        <div className="msg-content">
+                          {renderMessage(msg.content)}
+                        </div>
+                        {msg.role === 'assistant' && (
+                          <button 
+                            className={`msg-speaker ${speakingId === i ? 'speaking' : ''}`} 
+                            onClick={() => speakMessage(msg.content, i)}
+                            title="Listen"
+                          >
+                            {speakingId === i ? '⏹️' : '🔊'}
+                          </button>
+                        )}
+                      </div>
+                      {msg.isFallback && (
+                        <div className="fallback-note">📴 Local response (API quota reached)</div>
+                      )}
+                      <div className="msg-time">
+                        {msg.time?.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="chat-message assistant">
+                    <div className="msg-avatar">🤖</div>
+                    <div className="msg-bubble">
+                      <div className="searching-status">🔍 Searching Google Knowledge Base...</div>
+                      <div className="typing-indicator">
+                        <span /><span /><span />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="chat-input-row">
+                <button 
+                  className={`voice-input-btn ${isListening ? 'listening' : ''}`}
+                  onClick={toggleListen}
+                  title={isListening ? "Stop listening" : "Voice input"}
+                  disabled={loading}
+                >
+                  {isListening ? '🛑' : '🎤'}
+                </button>
+                <textarea
+                  ref={inputRef}
+                  id="chatbot-input"
+                  className="chat-input"
+                  placeholder={isListening ? "Listening..." : t('typeMessage')}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKey}
+                  rows={1}
+                  disabled={loading}
+                />
+                <button
+                  id="btn-chat-send"
+                  className="chat-send-btn"
+                  onClick={() => send()}
+                  disabled={!input.trim() || loading}
+                >
+                  {loading ? <span className="spinner-sm" /> : '➤'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </>

@@ -135,6 +135,29 @@
 
 .weather-hum { font-size: 0.75rem; color: #00aaff; }
 
+.weather-wind { font-size: 0.75rem; color: #a855f7; }
+
+.wind-alert-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ff4d4d;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 6px;
+  animation: pulseWind 1.5s infinite;
+  margin-left: 6px;
+  white-space: nowrap;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.2);
+}
+
+@keyframes pulseWind {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.93); }
+}
+
 /* ─── Clock ─── */
 .header-clock {
   display: flex;
@@ -283,5 +306,15 @@
 
 @media (max-width: 900px) {
   .header-weather, .clock-date, .user-name { display: none; }
-  .app-header { padding: 0 12px; }
+  .app-header { padding: 0 12px; height: 60px; }
+  .header-logo-text { font-size: 1rem; letter-spacing: 2px; }
+  .header-logo-img { width: 32px; height: 32px; }
+  .header-nav-btn { padding: 8px 12px; font-size: 0.8rem; gap: 4px; }
+  .header-nav-btn span:last-child { display: none; }
+}
+
+@media (max-width: 480px) {
+  .header-logo-text { display: none; }
+  .header-nav { gap: 0; }
+  .header-nav-btn { padding: 8px 10px; }
 }

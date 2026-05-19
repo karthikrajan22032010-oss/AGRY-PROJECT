@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import './LoadingScreen.css';
-
-const LEAF_COUNT = 18;
+import logo from '/logo.png';
 
 export default function LoadingScreen({ onComplete }) {
   const [progress, setProgress] = useState(0);
@@ -41,25 +40,12 @@ export default function LoadingScreen({ onComplete }) {
 
   return (
     <div className={`loading-screen${done ? ' fade-out' : ''}`}>
-      {/* Particles */}
-      <div className="particles">
-        {Array.from({ length: LEAF_COUNT }).map((_, i) => (
-          <div
-            key={i}
-            className="particle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${4 + Math.random() * 4}s`,
-              fontSize: `${10 + Math.random() * 14}px`,
-              opacity: 0.3 + Math.random() * 0.5,
-            }}
-          >
-            {['🌿', '🌱', '🍃', '🌾', '🌻'][Math.floor(Math.random() * 5)]}
-          </div>
-        ))}
-      </div>
-
+      {/* Overlay for better contrast */}
+      <div className="loading-overlay" />
+      
+      {/* Grid Lines Animation */}
+      <div className="grid-lines" />
+      
       {/* Scanline effect */}
       <div className="scanline" />
 
@@ -67,7 +53,7 @@ export default function LoadingScreen({ onComplete }) {
       <div className="loading-logo-wrap">
         <div className="loading-logo-ring">
           <div className="loading-logo-inner">
-            <div className="loading-logo-icon">🌾</div>
+            <img src={logo} alt="Logo" className="loading-logo-img" />
           </div>
         </div>
 

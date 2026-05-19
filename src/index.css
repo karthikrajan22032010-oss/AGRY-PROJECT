@@ -8,13 +8,13 @@
   --bg-glass: rgba(0, 255, 100, 0.04);
   --border-green: rgba(0, 255, 100, 0.2);
   --border-bright: rgba(0, 255, 100, 0.5);
-  --green-primary: #00e664;
-  --green-bright: #00ff80;
-  --green-dim: #00aa44;
-  --green-glow: rgba(0, 230, 100, 0.3);
-  --text-primary: #e8f5eb;
-  --text-secondary: #7db88a;
-  --text-muted: #4a7a55;
+  --green-primary: #00ff9d;
+  --green-bright: #24ffb0;
+  --green-dim: #00cc7d;
+  --green-glow: rgba(0, 255, 157, 0.4);
+  --text-primary: #ffffff;
+  --text-secondary: #d1e9d6;
+  --text-muted: #94bba0;
   --red-alert: #ff4444;
   --gold: #ffd700;
   --blue-info: #00aaff;
@@ -38,13 +38,16 @@
 
 html, body {
   width: 100%;
-  height: 100%;
-  background: var(--bg-primary);
+  min-height: 100%;
+  background: transparent;
   color: var(--text-primary);
   font-family: var(--font-main);
   overflow-x: hidden;
   scroll-behavior: smooth;
+  position: relative;
 }
+
+/* Overlay handled in App.jsx */
 
 #root {
   min-height: 100vh;
@@ -167,11 +170,24 @@ html, body {
   letter-spacing: 4px;
 }
 
+.auth-bg-grid {
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0, 255, 100, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 100, 0.05) 1px, transparent 1px);
+  background-size: 60px 60px;
+  z-index: -1;
+  mask-image: radial-gradient(circle at center, black, transparent 90%);
+  opacity: 0.5;
+}
+
 .header-logo-img, .auth-logo-img {
   width: 42px;
   height: 42px;
   object-fit: contain;
   filter: drop-shadow(0 0 8px rgba(0,255,100,0.5));
+  flex-shrink: 0;
 }
 
 .btn-primary::before {

@@ -1,7 +1,7 @@
 .loading-screen {
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse at center, #0a1f10 0%, #050d08 60%, #020705 100%);
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9,6 +9,17 @@
   z-index: 9999;
   overflow: hidden;
   transition: opacity 0.6s ease;
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0, 20, 10, 0.1) 0%, rgba(0, 5, 2, 0.6) 100%);
+  z-index: 1;
+}
+
+.grid-lines {
+  display: none;
 }
 
 .loading-screen.fade-out {
@@ -26,19 +37,7 @@
   pointer-events: none;
 }
 
-/* ─── Particles ─── */
-.particles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.particle {
-  position: absolute;
-  top: -30px;
-  animation: particleFall linear infinite;
-}
+/* ─── Particles removed for professionalism ─── */
 
 /* ─── Logo ─── */
 .loading-logo-wrap {
@@ -61,6 +60,7 @@
   animation: glow 2s ease-in-out infinite, spin 12s linear infinite;
   background: conic-gradient(from 0deg, rgba(0,255,100,0.15), transparent, rgba(0,255,100,0.15));
   position: relative;
+  z-index: 10;
 }
 
 .loading-logo-ring::before {
@@ -81,12 +81,14 @@
   align-items: center;
   justify-content: center;
   animation: spin 12s linear infinite reverse;
+  overflow: hidden;
 }
 
-.loading-logo-icon {
-  font-size: 2.4rem;
-  animation: float 3s ease-in-out infinite;
-  filter: drop-shadow(0 0 12px rgba(0, 255, 100, 0.6));
+.loading-logo-img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(0,255,100,0.5));
 }
 
 .loading-title {
@@ -146,6 +148,7 @@
   flex-direction: column;
   gap: 10px;
   animation: fadeIn 1s ease 0.3s both;
+  z-index: 10;
 }
 
 .loading-progress-bar {
@@ -203,4 +206,5 @@
   color: rgba(0, 150, 60, 0.4);
   font-size: 0.72rem;
   letter-spacing: 1px;
+  z-index: 10;
 }

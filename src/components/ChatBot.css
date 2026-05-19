@@ -62,6 +62,55 @@
 }
 
 /* ─── Chat Window ─── */
+.intelligence-panel {
+  background: rgba(0, 255, 157, 0.1);
+  border-bottom: 1px solid var(--border-green);
+  padding: 12px 16px;
+}
+
+.intelligence-panel h4 {
+  font-size: 0.75rem;
+  color: var(--green-primary);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.intel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.intel-item {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+}
+
+.intel-item strong {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+}
+
+.cert-btn {
+  background: rgba(0, 255, 157, 0.1);
+  border: 1px solid var(--border-green);
+  color: var(--green-primary);
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.cert-btn:hover {
+  background: var(--green-primary);
+  color: black;
+}
+
 .chatbot-window {
   position: fixed;
   bottom: 100px;
@@ -304,6 +353,15 @@
 }
 
 /* ─── Typing ─── */
+.searching-status {
+  font-size: 0.72rem;
+  color: var(--green-primary);
+  margin-bottom: 6px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
 .typing-indicator {
   display: flex;
   gap: 4px;
@@ -424,6 +482,230 @@
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
 }
 
+/* ─── Video Call View ─── */
+.chat-video-call-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at center, rgba(10, 30, 20, 0.95) 0%, rgba(5, 12, 8, 0.99) 100%);
+  padding: 16px;
+  position: relative;
+  justify-content: space-between;
+}
+
+.video-avatar-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.avatar-glow-ring {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 255, 100, 0.15);
+  box-shadow: 0 0 30px rgba(0, 255, 100, 0.05);
+  position: absolute;
+  transition: all 0.3s ease;
+}
+
+.avatar-glow-ring.pulse-listening {
+  border-color: rgba(0, 255, 100, 0.6);
+  box-shadow: 0 0 50px rgba(0, 255, 100, 0.3);
+  animation: wavePulse 1.8s infinite ease-in-out;
+}
+
+.avatar-glow-ring.pulse-speaking {
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 50px rgba(168, 85, 247, 0.3);
+  animation: wavePulsePurple 1.2s infinite ease-in-out;
+}
+
+.avatar-glow-ring.pulse-loading {
+  border-color: rgba(234, 179, 8, 0.6);
+  box-shadow: 0 0 50px rgba(234, 179, 8, 0.3);
+  animation: spinGlow 2s infinite linear;
+}
+
+@keyframes wavePulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+@keyframes wavePulsePurple {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.22); opacity: 1; }
+}
+
+@keyframes spinGlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.avatar-face {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(0, 255, 100, 0.05);
+  border: 1px solid rgba(0, 255, 100, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  position: relative;
+}
+
+.avatar-eye {
+  width: 10px;
+  height: 10px;
+  background: var(--green-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--green-primary);
+  animation: blinkEye 4s infinite;
+}
+
+@keyframes blinkEye {
+  0%, 90%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+.avatar-mouth {
+  position: absolute;
+  bottom: 30px;
+  width: 24px;
+  height: 6px;
+  background: var(--green-primary);
+  border-radius: 3px;
+  box-shadow: 0 0 8px var(--green-primary);
+}
+
+.pulse-speaking ~ .avatar-face .avatar-mouth {
+  animation: talkMouth 0.4s infinite alternate;
+}
+
+@keyframes talkMouth {
+  0% { height: 6px; border-radius: 3px; }
+  100% { height: 18px; border-radius: 50%; }
+}
+
+.video-call-status {
+  margin-top: 100px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+  z-index: 10;
+}
+
+/* User Webcam PIP */
+.video-user-pip {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 90px;
+  height: 120px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-green);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  background: #000;
+}
+
+.pip-video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror */
+}
+
+.pip-label {
+  position: absolute;
+  bottom: 4px;
+  left: 6px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  background: rgba(0,0,0,0.6);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
+}
+
+/* Caption subtitles overlay */
+.video-subtitles {
+  padding: 12px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 12px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.subtitle-text {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #e2e8f0;
+  text-align: center;
+  margin: 0;
+}
+
+.subtitle-text strong {
+  color: var(--green-primary);
+}
+
+/* Call Control Buttons */
+.video-call-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.video-control-btn {
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-family: var(--font-main);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.video-control-btn.voice-btn {
+  background: rgba(0, 255, 100, 0.1);
+  color: var(--green-primary);
+  border: 1px solid var(--border-green);
+}
+
+.video-control-btn.voice-btn.listening {
+  background: rgba(255, 68, 68, 0.15);
+  color: #ff4d4d;
+  border-color: rgba(255, 68, 68, 0.4);
+  animation: buttonPulse 1.5s infinite;
+}
+
+@keyframes buttonPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 12px 4px rgba(255, 68, 68, 0.2); }
+}
+
+.video-control-btn.end-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff4d4d;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.video-control-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.2);
+}
+
 @media (max-width: 480px) {
   .chatbot-window { width: calc(100vw - 20px); right: 10px; bottom: 80px; height: 70vh; }
+  .video-user-pip { width: 75px; height: 100px; }
 }

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useLang } from '../context/LangContext';
 import './LandForm.css';
 
-const GEMINI_KEY = 'AIzaSyAeIETs3_B6wPJo8dWE_HLn0hdIt6jByCk';
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY || 'AIzaSyAeIETs3_B6wPJo8dWE_HLn0hdIt6jByCk';
 
 /* ── Color themes that change when an image is uploaded ── */
 const IMAGE_THEMES = [
@@ -53,7 +53,76 @@ export default function LandForm({ onSubmit }) {
   const [imageTheme,  setImageTheme]      = useState(IMAGE_THEMES[0]);
   const [imageAnalysis, setImageAnalysis] = useState(null);
   const [analyzing,   setAnalyzing]       = useState(false);
+  const [showManual,  setShowManual]      = useState(false);
   const imgInputRef = useRef(null);
+
+  // Auto-locate on mount
+  React.useEffect(() => {
+    if (!form.lat && !form.locationName) {
+      useMyLocation();
+    }
+  }, []);
+
+  const triggerLocationAI = async (lat, lon, locName) => {
+    setAnalyzing(true);
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `You are an elite agricultural AI. Based on the exact GPS coordinates (Lat: ${lat}, Lon: ${lon}) at location "${locName}", predict the highly probable agricultural data for this specific geographic area.
+Return exactly these categories in JSON:
+1. soilType: Must match one of: ${SOIL_TYPES.join(' / ')}
+2. slope: Must match one of: ${SLOPE_OPTIONS.join(' / ')}
+3. crops: Array of 2-3 most common crops here matching these options: ${CROP_OPTIONS.join(' / ')}
+4. condition: healthy / dry / flooded
+5. groundWater: Estimated level as a number 10-100
+6. recommendation: A short expert farming tip based on this geography.
+
+Reply ONLY with valid JSON.`
+              }]
+            }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 512 }
+          }),
+        }
+      );
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        const findBestMatch = (val, options) => {
+          if (!val) return null;
+          const v = val.toLowerCase();
+          return options.find(opt => opt.toLowerCase().includes(v) || v.includes(opt.toLowerCase()));
+        };
+
+        const matchedSoil = findBestMatch(parsed.soilType, SOIL_TYPES);
+        const matchedSlope = findBestMatch(parsed.slope, SLOPE_OPTIONS);
+        const matchedCrops = Array.isArray(parsed.crops) 
+          ? parsed.crops.map(c => findBestMatch(c, CROP_OPTIONS)).filter(Boolean)
+          : [];
+
+        setImageAnalysis({ ...parsed, type: 'location' }); // Sets state to hide manual forms
+        setForm(p => ({
+          ...p,
+          soilType: matchedSoil || p.soilType,
+          slope: matchedSlope || p.slope,
+          crops: matchedCrops.length ? [...new Set([...p.crops, ...matchedCrops])] : p.crops,
+          groundWater: parsed.groundWater ? String(parsed.groundWater) : p.groundWater
+        }));
+      }
+    } catch (err) {
+      console.warn('Location AI failed:', err);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
 
@@ -85,19 +154,23 @@ export default function LandForm({ onSubmit }) {
           const d = await r.json();
           const addr = d.address || {};
           
-          // Formulate a very exact address string
-          const parts = [
-            addr.road || addr.suburb || addr.neighbourhood,
-            addr.village || addr.town || addr.city_district,
-            addr.county || addr.state_district,
+          // Formulate a very exact address string with no duplicates
+          const rawParts = [
+            addr.amenity || addr.building,
+            addr.road,
+            addr.neighbourhood || addr.suburb,
+            addr.village || addr.town || addr.city,
+            addr.state_district || addr.county,
             addr.state,
             addr.postcode
           ].filter(Boolean);
           
+          const parts = [...new Set(rawParts)];
           name = parts.join(', ');
         } catch {}
         setForm(p => ({ ...p, lat: latitude.toFixed(6), lon: longitude.toFixed(6), locationName: name }));
         setLocLoading(false);
+        triggerLocationAI(latitude.toFixed(6), longitude.toFixed(6), name);
       },
       () => { setLocError('Could not get exact location. Enter manually.'); setLocLoading(false); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Force high accuracy GPS
@@ -150,18 +223,21 @@ export default function LandForm({ onSubmit }) {
             body: JSON.stringify({
               contents: [{
                 parts: [
-                  { text: `Analyze this agricultural land photo. Identify:
-1. Visible soil type (Red Loamy / Black Cotton / Alluvial / Sandy / Clay / Laterite / Silt)
-2. Land condition (dry / wet / flooded / healthy / degraded)
-3. Visible crops or vegetation
-4. Slope (flat / gentle / moderate / steep)
-5. Land security concerns (any visible encroachment, water erosion, etc.)
-6. Short recommendation for this land.
-Reply in JSON format: {"soilType":"...","condition":"...","crops":["..."],"slope":"...","concerns":"...","recommendation":"..."}` },
+                  { text: `Analyze this agricultural land photo for high-precision field diagnostics. 
+Return exactly these categories in JSON:
+1. soilType: Must match one of: ${SOIL_TYPES.join(' / ')}
+2. slope: Must match one of: ${SLOPE_OPTIONS.join(' / ')}
+3. crops: Array of detected crops matching these options: ${CROP_OPTIONS.join(' / ')}
+4. condition: dry / wet / flooded / healthy / degraded
+5. groundWater: Estimated level as a number 10-100
+6. concerns: Any visible land issues
+7. recommendation: A short expert farming tip.
+
+Reply ONLY with valid JSON: {"soilType":"...","slope":"...","crops":["..."],"condition":"...","groundWater":85,"concerns":"...","recommendation":"..."}` },
                   { inline_data: { mime_type: file.type, data: b64 } },
                 ],
               }],
-              generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
+              generationConfig: { temperature: 0.2, maxOutputTokens: 512 },
             }),
           }
         );
@@ -171,17 +247,27 @@ Reply in JSON format: {"soilType":"...","condition":"...","crops":["..."],"slope
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
           setImageAnalysis(parsed);
-          // Auto-fill form fields from analysis
-          if (parsed.soilType)  setForm(p => ({ ...p, soilType: parsed.soilType }));
-          if (parsed.slope) {
-            const slopeMap = { flat:'Flat (0-1%)', gentle:'Gentle Slope (2-3%)', moderate:'Moderate Slope (4-6%)', steep:'Steep Slope (7-15%)' };
-            const key = Object.keys(slopeMap).find(k => parsed.slope.toLowerCase().includes(k));
-            if (key) setForm(p => ({ ...p, slope: slopeMap[key] }));
-          }
-          if (Array.isArray(parsed.crops) && parsed.crops.length) {
-            const matched = parsed.crops.filter(c => CROP_OPTIONS.some(opt => opt.toLowerCase().includes(c.toLowerCase())));
-            if (matched.length) setForm(p => ({ ...p, crops: matched }));
-          }
+          
+          // FUZZY MATCHING LOGIC
+          const findBestMatch = (val, options) => {
+            if (!val) return null;
+            const v = val.toLowerCase();
+            return options.find(opt => opt.toLowerCase().includes(v) || v.includes(opt.toLowerCase()));
+          };
+
+          const matchedSoil = findBestMatch(parsed.soilType, SOIL_TYPES);
+          const matchedSlope = findBestMatch(parsed.slope, SLOPE_OPTIONS);
+          const matchedCrops = Array.isArray(parsed.crops) 
+            ? parsed.crops.map(c => findBestMatch(c, CROP_OPTIONS)).filter(Boolean)
+            : [];
+
+          setForm(p => ({
+            ...p,
+            soilType: matchedSoil || p.soilType,
+            slope: matchedSlope || p.slope,
+            crops: matchedCrops.length ? [...new Set([...p.crops, ...matchedCrops])] : p.crops,
+            groundWater: parsed.groundWater ? String(parsed.groundWater) : p.groundWater
+          }));
         }
       } catch (err) {
         console.warn('Image analysis failed:', err);
@@ -221,83 +307,11 @@ Reply in JSON format: {"soilType":"...","condition":"...","crops":["..."],"slope
       </div>
 
       <div className="land-form-grid">
-
-        {/* ── LOCATION (primary — required) ── */}
-        <div className="glass-card land-card location-primary-card">
-          <h3 className="card-title">📍 {t('location')} <span className="required-badge">Required</span></h3>
-
-          <div className="loc-actions">
-            <button id="btn-my-location" className="btn-primary loc-btn"
-              onClick={useMyLocation} disabled={locLoading}>
-              {locLoading ? <span className="spinner-sm" /> : '📡'}
-              {locLoading ? 'Detecting...' : t('useMyLocation')}
-            </button>
-            <button id="btn-open-map" className="btn-outline loc-btn" onClick={openGoogleMaps}>
-              🗺 {t('openMap')}
-            </button>
-          </div>
-
-          {locError && <div className="loc-error">⚠ {locError}</div>}
-
-          <div className="form-group search-loc-group">
-            <label className="form-label">🏘 Location Name / Village / District</label>
-            <div className="input-with-btn">
-              <input id="field-location-name" className="input-field location-big-input"
-                placeholder="e.g. Kovilpatti, Tamil Nadu or Village name..."
-                value={form.locationName}
-                onChange={f('locationName')} />
-              <button className="search-btn-mini" onClick={async () => {
-                if (!form.locationName) return;
-                setLocLoading(true);
-                try {
-                  const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(form.locationName)}&format=json&limit=1`);
-                  const d = await r.json();
-                  if (d.length) {
-                    setForm(p => ({ ...p, lat: parseFloat(d[0].lat).toFixed(6), lon: parseFloat(d[0].lon).toFixed(6) }));
-                  } else {
-                    setLocError('Could not find this address. Try coordinates.');
-                  }
-                } catch {
-                  setLocError('Search service unavailable.');
-                } finally {
-                  setLocLoading(false);
-                }
-              }}>🔍 {t('search') || 'Search'}</button>
-            </div>
-          </div>
-
-          <div className="coord-row">
-            <div className="form-group">
-              <label className="form-label">🌐 Latitude</label>
-              <input id="field-lat" className="input-field" placeholder="11.0168"
-                value={form.lat} onChange={f('lat')} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">🌐 Longitude</label>
-              <input id="field-lon" className="input-field" placeholder="76.9558"
-                value={form.lon} onChange={f('lon')} />
-            </div>
-          </div>
-
-          {/* Mini map preview */}
-          {form.lat && form.lon && (
-            <div className="map-preview-wrap">
-              <iframe
-                title="Land Location"
-                className="map-preview"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(form.lon)-0.005},${parseFloat(form.lat)-0.005},${parseFloat(form.lon)+0.005},${parseFloat(form.lat)+0.005}&layer=mapnik&marker=${form.lat},${form.lon}`}
-                loading="lazy"
-              />
-              <div className="map-label">📍 {form.locationName || `${form.lat}, ${form.lon}`}</div>
-            </div>
-          )}
-        </div>
-
-        {/* ── IMAGE UPLOAD (auto-analyzes & changes color) ── */}
-        <div className="glass-card land-card image-upload-card">
+        {/* ── IMAGE UPLOAD (The main entry point for 'Magic' mode) ── */}
+        <div className={`glass-card land-card image-upload-card ${imageAnalysis ? 'magic-active' : ''}`}>
           <h3 className="card-title">
-            🖼 Upload Land Photo
-            <span className="optional-badge">Auto AI Analysis</span>
+            🖼 {imageAnalysis ? 'AI Field Scan Complete' : 'Upload Land Photo'}
+            <span className="optional-badge">{imageAnalysis ? 'AI Verified' : 'Auto AI Analysis'}</span>
           </h3>
 
           <div
@@ -311,183 +325,122 @@ Reply in JSON format: {"soilType":"...","condition":"...","crops":["..."],"slope
               <div className="image-drop-inner">
                 <div className="image-drop-icon">📸</div>
                 <div className="image-drop-text">Click to upload land photo</div>
-                <div className="image-drop-hint">JPG / PNG — AI will auto-analyze soil, crops & slope</div>
+                <div className="image-drop-hint">AI will auto-fill every technical detail for you</div>
               </div>
             )}
             <input ref={imgInputRef} type="file" accept="image/*"
               style={{ display: 'none' }} onChange={handleImageChange} />
           </div>
 
-          {/* Analyzing indicator */}
           {analyzing && (
             <div className="image-analyzing">
               <span className="spinner-sm" />
-              <span>AI analyzing your land photo...</span>
+              <span>AI is reading your land... no manual entry needed.</span>
             </div>
           )}
 
-          {/* Theme badge */}
-          {landImage && !analyzing && (
-            <div className="theme-applied-badge">
-              🎨 Theme applied: <strong>{imageTheme.name}</strong>
-              <button className="change-theme-btn"
-                onClick={() => {
-                  const next = IMAGE_THEMES[(IMAGE_THEMES.indexOf(imageTheme) + 1) % IMAGE_THEMES.length];
-                  setImageTheme(next); applyTheme(next);
-                }}>
-                Next Theme →
-              </button>
-            </div>
-          )}
-
-          {/* Analysis result */}
           {imageAnalysis && !analyzing && (
-            <div className="image-analysis-result">
-              <div className="analysis-title">🤖 AI Analysis Result</div>
-              {imageAnalysis.soilType    && <div className="analysis-row"><span>Soil:</span><span>{imageAnalysis.soilType}</span></div>}
-              {imageAnalysis.condition   && <div className="analysis-row"><span>Condition:</span><span>{imageAnalysis.condition}</span></div>}
-              {imageAnalysis.slope       && <div className="analysis-row"><span>Slope:</span><span>{imageAnalysis.slope}</span></div>}
-              {imageAnalysis.concerns    && <div className="analysis-row"><span>Concerns:</span><span>{imageAnalysis.concerns}</span></div>}
-              {imageAnalysis.recommendation && (
-                <div className="analysis-recommend">💡 {imageAnalysis.recommendation}</div>
-              )}
+            <div className="magic-success-pill">
+              ✨ AI has completed the check. Your field is ready for analysis.
             </div>
           )}
 
-          {/* Color swatches */}
-          <div className="theme-swatches">
-            <span className="swatch-label">Color Theme:</span>
-            {IMAGE_THEMES.map((th, i) => (
-              <button key={i}
-                className={`swatch-btn ${imageTheme.name === th.name ? 'active' : ''}`}
-                style={{ background: th.primary }}
-                title={th.name}
-                onClick={() => { setImageTheme(th); applyTheme(th); }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* ── AREA (optional) ── */}
-        <div className="glass-card land-card">
-          <h3 className="card-title">📐 {t('landArea')} <span className="optional-badge">Optional</span></h3>
-
-          <div className="form-group">
-            <label className="form-label">{t('plotType')}</label>
-            <div className="plot-type-toggle">
-              <button id="plot-rectangular"
-                className={`plot-type-btn ${form.plotType === 'rectangular' ? 'active' : ''}`}
-                onClick={() => setForm(p => ({ ...p, plotType: 'rectangular' }))}>▭ {t('rectangular')}</button>
-              <button id="plot-nonrectangular"
-                className={`plot-type-btn ${form.plotType === 'nonrectangular' ? 'active' : ''}`}
-                onClick={() => setForm(p => ({ ...p, plotType: 'nonrectangular' }))}>△ {t('nonRectangular')}</button>
-            </div>
-          </div>
-
-          <div className="dim-row">
-            <div className="form-group">
-              <label className="form-label">↔ {t('landLength')}</label>
-              <input id="field-length" className="input-field" type="number"
-                placeholder="e.g. 200" value={form.length} onChange={f('length')} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">↕ {t('landWidth')}</label>
-              <input id="field-width" className="input-field" type="number"
-                placeholder="e.g. 100" value={form.width} onChange={f('width')} />
-            </div>
-          </div>
-
-          {form.plotType === 'nonrectangular' && (
-            <div className="form-group">
-              <label className="form-label">△ Triangle Extra Area (sq ft)</label>
-              <input id="field-shape2" className="input-field" type="number"
-                placeholder="e.g. 500" value={form.shape2Area} onChange={f('shape2Area')} />
-            </div>
-          )}
-
-          {sqFt > 0 && (
-            <div className="area-result-box">
-              <div className="area-result-title">Calculated Area</div>
-              <div className="area-result-grid">
-                {[
-                  [sqFt.toLocaleString(), t('sqFt')],
-                  [cents, t('cents')],
-                  [guntas, t('guntas')],
-                  [acres, t('acres')],
-                ].map(([v, u]) => (
-                  <div key={u} className="area-result-item">
-                    <span className="area-val">{v}</span>
-                    <span className="area-unit">{u}</span>
-                  </div>
-                ))}
+          {imageAnalysis && !analyzing && (
+            <div className="image-analysis-result magic-result">
+              <div className="analysis-title">🤖 AI Field Intelligence</div>
+              <div className="magic-grid">
+                {imageAnalysis.soilType && <div className="magic-item"><span>🪨 Soil</span><strong>{imageAnalysis.soilType}</strong></div>}
+                {imageAnalysis.slope && <div className="magic-item"><span>⛰ Slope</span><strong>{imageAnalysis.slope}</strong></div>}
+                {imageAnalysis.crops && imageAnalysis.crops.length > 0 && (
+                  <div className="magic-item"><span>🌱 Crops</span><strong>{imageAnalysis.crops.join(', ')}</strong></div>
+                )}
+                {imageAnalysis.condition && <div className="magic-item"><span>💧 Status</span><strong>{imageAnalysis.condition}</strong></div>}
               </div>
+              <div className="analysis-recommend magic-tip">💡 {imageAnalysis.recommendation}</div>
             </div>
           )}
-
-          {/* Conversion table */}
-          <div className="conversion-table-wrap">
-            <div className="conv-title">📊 Quick Conversion</div>
-            <table className="agri-table conv-table">
-              <thead><tr><th>Unit</th><th>= Sq Ft</th><th>Example</th></tr></thead>
-              <tbody>
-                <tr><td>1 Cent</td><td>435.6</td><td>40×10.9 ft</td></tr>
-                <tr><td>1 Gunta</td><td>1,089</td><td>33×33 ft</td></tr>
-                <tr><td>1 Ground</td><td>2,400</td><td>60×40 ft</td></tr>
-                <tr><td>1 Acre</td><td>43,560</td><td>220×198 ft</td></tr>
-              </tbody>
-            </table>
-          </div>
         </div>
 
-        {/* ── SOIL & CONDITIONS ── */}
-        <div className="glass-card land-card">
-          <h3 className="card-title">🌍 Soil &amp; Field Conditions <span className="optional-badge">Auto-filled if image uploaded</span></h3>
-
-          <div className="form-group">
-            <label className="form-label">🪨 {t('soilType')}</label>
-            <select id="field-soil" className="input-field" value={form.soilType} onChange={f('soilType')}>
-              {SOIL_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">⛰ {t('fieldSlope')}</label>
-            <select id="field-slope" className="input-field" value={form.slope} onChange={f('slope')}>
-              {SLOPE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">💧 {t('groundWater')} ({form.groundWater}%)</label>
-            <input type="range" min={10} max={100} step={5}
-              value={form.groundWater} onChange={f('groundWater')}
-              className="range-slider" id="field-groundwater" />
-            <div className="slider-value">
-              <span className="gwl-val">{form.groundWater}%</span>
-              <span className={`gwl-status ${form.groundWater >= 60 ? 'good' : form.groundWater >= 30 ? 'medium' : 'low'}`}>
-                {form.groundWater >= 60 ? '✓ Good' : form.groundWater >= 30 ? '⚠ Medium' : '✗ Low'}
-              </span>
+        {/* ── LOCATION (Always shown but simplified in magic mode) ── */}
+        <div className={`glass-card land-card location-primary-card ${imageAnalysis ? 'magic-mini' : ''}`}>
+          <h3 className="card-title">📍 {t('location')}</h3>
+          
+          <div className="magic-location-box">
+            <span className="magic-loc-icon">🌐</span>
+            <div className="magic-loc-info">
+              <span className="magic-loc-label">Current Field Location</span>
+              <span className="magic-loc-value">{form.locationName || 'Detecting...'}</span>
             </div>
+            {!imageAnalysis && (
+              <button className="magic-change-loc" onClick={useMyLocation}>🔄 Update</button>
+            )}
           </div>
-        </div>
 
-        {/* ── CROPS ── */}
-        <div className="glass-card land-card">
-          <h3 className="card-title">🌱 Crops &amp; Plants <span className="optional-badge">Auto-filled if image uploaded</span></h3>
-          <div className="crop-grid">
-            {CROP_OPTIONS.map(crop => (
-              <button key={crop} id={`crop-${crop.replace(/\s+/g,'-')}`}
-                className={`crop-chip ${form.crops.includes(crop) ? 'selected' : ''}`}
-                onClick={() => toggleCrop(crop)}>
-                {form.crops.includes(crop) ? '✓ ' : ''}{crop}
-              </button>
-            ))}
-          </div>
-          {form.crops.length > 0 && (
-            <div className="selected-crops">Selected: {form.crops.join(', ')}</div>
+          {!imageAnalysis && (
+            <>
+              <div className="loc-actions">
+                <button id="btn-my-location" className="btn-primary loc-btn" onClick={useMyLocation} disabled={locLoading}>
+                  {locLoading ? <span className="spinner-sm" /> : '📡'} {t('useMyLocation')}
+                </button>
+              </div>
+              <div className="form-group search-loc-group">
+                <div className="input-with-btn">
+                  <input className="input-field" placeholder="Search place name..." value={form.locationName} onChange={f('locationName')} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {form.lat && form.lon && (
+            <div className="map-preview-wrap">
+              <iframe title="map" className="map-preview" src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(form.lon)-0.005},${parseFloat(form.lat)-0.005},${parseFloat(form.lon)+0.005},${parseFloat(form.lat)+0.005}&layer=mapnik&marker=${form.lat},${form.lon}`} />
+            </div>
           )}
         </div>
 
+        {/* ── MANUAL BOXES (Hidden by Default) ── */}
+        {!imageAnalysis && (
+          <div className="manual-toggle-section" style={{ width: '100%', textAlign: 'center', marginTop: '1rem', gridColumn: '1 / -1' }}>
+            <button 
+              className="btn-secondary" 
+              onClick={() => setShowManual(!showManual)}
+              style={{ background: 'transparent', border: '1px solid var(--border-bright)', color: 'var(--green-bright)', padding: '0.8rem 1.5rem', borderRadius: '8px', cursor: 'pointer', marginBottom: '1rem' }}
+            >
+              {showManual ? '▲ Hide Manual Entry' : '▼ Show Manual Entry'}
+            </button>
+            
+            {showManual && (
+              <div className="manual-fields-container" style={{ animation: 'fadeIn 0.3s', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', textAlign: 'left' }}>
+                <div className="glass-card land-card">
+                  <h3 className="card-title">📐 {t('landArea')}</h3>
+                  <div className="dim-row">
+                    <input className="input-field" type="number" placeholder="Length (ft)" value={form.length} onChange={f('length')} />
+                    <input className="input-field" type="number" placeholder="Width (ft)" value={form.width} onChange={f('width')} />
+                  </div>
+                </div>
+
+                <div className="glass-card land-card">
+                  <h3 className="card-title">🌍 Conditions</h3>
+                  <select className="input-field" value={form.soilType} onChange={f('soilType')}>
+                    {SOIL_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <select className="input-field" value={form.slope} onChange={f('slope')}>
+                    {SLOPE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                <div className="glass-card land-card">
+                  <h3 className="card-title">🌱 Crops</h3>
+                  <div className="crop-grid">
+                    {CROP_OPTIONS.slice(0, 8).map(c => (
+                      <button key={c} className={`crop-chip ${form.crops.includes(c) ? 'selected' : ''}`} onClick={() => toggleCrop(c)}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Submit */}

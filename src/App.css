@@ -6,21 +6,13 @@
 
 .app-main {
   flex: 1;
-  background: var(--bg-primary);
+  background: transparent;
   position: relative;
 }
 
-/* Background grid for app pages */
+/* Background grid removed for clarity */
 .app-main::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(0,255,100,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,255,100,0.025) 1px, transparent 1px);
-  background-size: 50px 50px;
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .app-main > * {

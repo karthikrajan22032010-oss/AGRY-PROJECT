@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useLang } from '../context/LangContext';
+import logo from '/logo.png';
 import './AuthPage.css';
 
 const COUNTRY_CODES = [
@@ -55,35 +56,72 @@ export default function AuthPage({ onLogin }) {
     reader.readAsDataURL(file);
   };
 
-  /* ── Submit (no OTP) ── */
-  const handleSubmit = () => {
+  /* ── Submit (Express & MongoDB API Integration) ── */
+  const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
-    setTimeout(() => {
+    setErrors({});
+    
+    try {
+      if (mode === 'register') {
+        const res = await fetch('http://localhost:5001/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...form, avatar }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setErrors({ username: data.error || 'Registration failed' });
+          setLoading(false);
+          return;
+        }
+        localStorage.setItem('agri_currentUser', JSON.stringify(data));
+        onLogin(data);
+      } else if (mode === 'login') {
+        const res = await fetch('http://localhost:5001/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: form.username, password: form.password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setErrors({ password: data.error || 'Login failed' });
+          setLoading(false);
+          return;
+        }
+        localStorage.setItem('agri_currentUser', JSON.stringify(data));
+        onLogin(data);
+      } else if (mode === 'forgot') {
+        const res = await fetch('http://localhost:5001/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: form.username, phone: form.phone, password: form.password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setErrors({ password: data.error || 'Password reset failed' });
+          setLoading(false);
+          return;
+        }
+        alert('Password reset successful! You can now login with your new password.');
+        setMode('login');
+      }
+    } catch (err) {
+      console.error('Auth API Error:', err);
+      setErrors({ password: 'Error connecting to the database server.' });
+    } finally {
       setLoading(false);
-      onLogin({
-        ...form,
-        fullPhone: form.countryCode + form.phone,
-        avatar,
-      });
-    }, 900);
+    }
   };
 
   return (
     <div className={`auth-page ${langClass}`}>
-      {/* Animated background */}
-      <div className="auth-bg">
-        <div className="auth-grid" />
-        <div className="auth-glow-1" />
-        <div className="auth-glow-2" />
-      </div>
-
       <div className="auth-container">
 
         {/* ── Left panel ── */}
         <div className="auth-left">
           <div className="auth-logo-wrap">
-            <img src="/logo.png" alt="Agri-Opt" className="auth-logo-img" />
+            <img src={logo} alt="Agri-Opt" className="auth-logo-img" />
             <h1 className="auth-logo-name">AGRI-OPT</h1>
           </div>
           <h2 className="auth-welcome">
@@ -115,18 +153,26 @@ export default function AuthPage({ onLogin }) {
         <div className="auth-right glass-card">
 
           {/* Tabs */}
-          <div className="auth-tabs">
-            <button id="tab-login"
-              className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
-              onClick={() => { setMode('login'); setErrors({}); }}>
-              {t('login')}
-            </button>
-            <button id="tab-register"
-              className={`auth-tab ${mode === 'register' ? 'active' : ''}`}
-              onClick={() => { setMode('register'); setErrors({}); }}>
-              {t('register')}
-            </button>
-          </div>
+          {mode !== 'forgot' ? (
+            <div className="auth-tabs">
+              <button id="tab-login"
+                className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
+                onClick={() => { setMode('login'); setErrors({}); }}>
+                {t('login')}
+              </button>
+              <button id="tab-register"
+                className={`auth-tab ${mode === 'register' ? 'active' : ''}`}
+                onClick={() => { setMode('register'); setErrors({}); }}>
+                {t('register')}
+              </button>
+            </div>
+          ) : (
+            <div className="auth-tabs">
+              <button className="auth-tab active" style={{ cursor: 'default' }}>
+                🔑 Reset Password
+              </button>
+            </div>
+          )}
 
           {/* ── Profile Photo (register) ── */}
           {mode === 'register' && (
@@ -244,13 +290,20 @@ export default function AuthPage({ onLogin }) {
 
             {/* Password */}
             <div className="auth-field">
-              <label className="auth-label">🔒 {t('password')}</label>
+              <label className="auth-label">🔒 {mode === 'forgot' ? 'New Password' : t('password')}</label>
               <input id="field-password" type="password"
                 className={`input-field ${errors.password ? 'error' : ''}`}
                 placeholder="••••••••"
                 value={form.password} onChange={f('password')} />
               {errors.password && <span className="field-error">{errors.password}</span>}
             </div>
+
+            {/* Forgot Password Link (login only) */}
+            {mode === 'login' && (
+              <a className="forgot-link" onClick={() => { setMode('forgot'); setErrors({}); }}>
+                Forgot Password?
+              </a>
+            )}
 
             {mode === 'register' && (
               <div className="auth-field">
@@ -263,17 +316,29 @@ export default function AuthPage({ onLogin }) {
               </div>
             )}
 
-            {/* Submit — no OTP */}
+            {/* Submit */}
             <button id="btn-submit-auth"
               className="btn-primary auth-submit"
               onClick={handleSubmit} disabled={loading}>
               {loading
-                ? <><span className="spinner" /> {mode === 'login' ? 'Logging in...' : 'Creating account...'}</>
+                ? <><span className="spinner" /> {mode === 'login' ? 'Logging in...' : mode === 'forgot' ? 'Resetting...' : 'Creating account...'}</>
                 : mode === 'login'
                   ? `🚀 ${t('login')}`
-                  : `✅ ${t('register')}`
+                  : mode === 'forgot'
+                    ? '🔑 Reset Password'
+                    : `✅ ${t('register')}`
               }
             </button>
+
+            {mode === 'forgot' && (
+              <button
+                className="btn-secondary auth-back"
+                onClick={() => { setMode('login'); setErrors({}); }}
+                style={{ marginTop: '4px' }}
+              >
+                ⬅ Back to Login
+              </button>
+            )}
 
             <p className="no-otp-note">🔓 Direct access — no OTP required</p>
           </div>
