@@ -22,12 +22,14 @@ let useJsonFallback = false;
 const readDb = () => {
   try {
     if (!fs.existsSync(DB_FILE)) {
-      fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], chats: [] }, null, 2));
+      fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], chats: [], vectorDocs: [] }, null, 2));
     }
-    return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    if (!data.vectorDocs) data.vectorDocs = [];
+    return data;
   } catch (e) {
     console.error('Error reading JSON DB file:', e);
-    return { users: [], chats: [] };
+    return { users: [], chats: [], vectorDocs: [] };
   }
 };
 
@@ -77,11 +79,28 @@ const ChatSchema = new mongoose.Schema({
   time: { type: Date, default: Date.now }
 });
 
+const VectorDocSchema = new mongoose.Schema({
+  text: { type: String, required: true },
+  embedding: { type: [Number], required: true }
+});
+
 const User = mongoose.model('User', UserSchema);
 const Chat = mongoose.model('Chat', ChatSchema);
+const VectorDoc = mongoose.model('VectorDoc', VectorDocSchema);
 
 // Root landing page to confirm server status
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  let docCount = 0;
+  try {
+    if (useJsonFallback) {
+      docCount = readDb().vectorDocs.length;
+    } else {
+      docCount = await VectorDoc.countDocuments();
+    }
+  } catch (e) {
+    console.error('Error counting vector documents:', e);
+  }
+
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -170,6 +189,7 @@ app.get('/', (req, res) => {
         <p class="desc">Database API Backend Services</p>
         <div class="status-badge">● Active & Secure</div>
         <p class="desc">The server is running correctly and storing data via ${useJsonFallback ? 'Local File (db.json)' : 'MongoDB'}.</p>
+        <p class="desc" style="color: #58a6ff; font-weight: 600;">📚 Vector Knowledge Base: ${docCount} paragraphs trained</p>
         
         <div class="endpoints">
           <div class="endpoints-title">Available Database Routes</div>
@@ -178,6 +198,7 @@ app.get('/', (req, res) => {
           <div class="endpoint-item"><span class="method post">POST</span> /api/auth/forgot-password</div>
           <div class="endpoint-item"><span class="method">GET</span>  /api/chat/:username</div>
           <div class="endpoint-item"><span class="method post">POST</span> /api/chat</div>
+          <div class="endpoint-item"><span class="method post">POST</span> /api/bot/ask</div>
         </div>
       </div>
     </body>
@@ -370,6 +391,162 @@ app.post('/api/chat', async (req, res) => {
   } catch (err) {
     console.error('Save chat message error:', err);
     res.status(500).json({ error: 'Internal server error saving chat message.' });
+  }
+});
+
+// Local Botanical Fallback for Offline/API failure cases
+function localOfflineFallback(q) {
+  const lower = q.toLowerCase();
+  const has = (k) => lower.includes(k);
+  const isTa = () => /[\u0B80-\u0BFF]/.test(q) || has('tamil') || has('தமிழ்');
+  const isHi = () => /[\u0900-\u097F]/.test(q) || has('hindi') || has('हिंदी');
+
+  if (has('gulmohur') || has('gul mohr') || has('mayarum')) {
+    if (isTa()) return '🌸 **டி. வி. கோவன் புத்தகக் குறிப்பு (மயிர் கொன்றை / Mayarum):**\n- தமிழ் பெயர்: **Mayarum** (மயிர் கொன்றை).\n- பூக்கும் காலம்: ஏப்ரல் முதல் ஜூன் வரை.\n- மலர்கள்: பிரகாசமான சிவப்பு மற்றும் ஆரஞ்சு நிறக் கொத்துகள்.';
+    if (isHi()) return '🌸 **डी. वी. कोवेन पुस्तक संदर्भ (गुलमोहर):**\n- तमिल नाम: **Mayarum**।\n- फूल आने का समय: अप्रैल से जून।\n- विशेषताएं: बड़े समूहों में चमकीले लाल और नारंगी रंग के फूल।';
+    return '🌸 **D. V. Cowen Botanical Reference (Gul Mohr):**\n- Tamil Name: **Mayarum**.\n- Botanical Name: *Delonix regia* (syn. *Poinciana regia*).\n- Blooming Season: April to June.\n- Flowers: Crimson or scarlet flowers in huge clusters.';
+  }
+
+  if (has('jack fruit') || has('jackfruit') || has('pila') || has('pilavu') || has('kanthal')) {
+    if (isTa()) return '🌸 **டி. வி. கோவன் புத்தகக் குறிப்பு (பலா மரம் / Jackfruit):**\n- **பயன்கள்**: பழுக்காத காய்கள் சமைத்து உண்ணப்படுகின்றன; தேன்-பலா பழம் மிகவும் இனிமையானது. முதிர்ந்த விதைகள் வறுக்கப்படுகின்றன.\n- **விலங்கு தீவனம்**: பலா இலைகள் ஆடு மற்றும் மாடுகளுக்கு ஊட்டம் அளிக்கின்றன.\n- **மருத்துவ பயன்கள்**: இலைகள் புண்களுக்கு ஒத்தடம் கொடுக்கவும், இலை சாறு சுரப்பி வீக்கங்களை குணப்படுத்தவும் உதவுகிறது.\n- **இதர பயன்கள்**: பலா மரம் மரச்சாமான்கள் செய்ய உதவுகிறது. மலபாரின் நம்பூதிரி பிராமணர்கள் உலர்ந்த பலா மரக் குச்சிகளை உராய்ந்து புனித நெருப்பை உருவாக்குகிறார்கள்.';
+    if (isHi()) return '🌸 **डी. वी. कोवेन पुस्तक संदर्भ (कटहल / Jackfruit):**\n- **उपयोग**: कच्चे फल सब्जी के रूप में पकाए जाते हैं; पका हुआ फल मीठा होता है। बीजों को भूनकर खाया जाता है।\n- **पशु चारा**: पत्तियां गाय और बकरियों को मोटा करने के लिए दी जाती हैं।\n- **औषधीय उपयोग**: पत्तियों का लेप घावों पर और रस ग्रंथियों की सूजन को कम करने में सहायक है।\n- **अन्य**: लकड़ी का उपयोग निर्माण कार्य में होता है। मालाबार के नंबूदिरी ब्राह्मण सूखी कटहल की टहनियों से पवित्र अग्नि उत्पन्न करते हैं।';
+    return '🌸 **D. V. Cowen Botanical Reference (Jackfruit Tree):**\n- **Uses**: Unripe fruits are cooked as vegetables. Honey-jack variety is the sweetest. Mature seeds are roasted and eaten. \n- **Fodder**: Jackfruit leaves are used to fatten cattle and goats.\n- **Medicinal**: Leaves make a fomentation applied to wounds; leaf juice relieves gland swellings.\n- **Other Uses**: The timber is highly valued for building and cabinet work. Nambudri Brahmins of Malabar produce sacred fire by the friction of dry Jackfruit branches.';
+  }
+
+  if (has('flame of the forest') || has('asoka') || has('frangipani') || has('champa') || has('jacaranda') || has('kaner') || has('bougainvillea') || has('kachnar') || has('amaltas') || has('coral tree') || has('pride of india') || has('colville') || has('teak') || has('baobab') || has('hibiscus') || has('gudhal') || has('ixora')) {
+    if (isTa()) return '🌸 **டி. வி. கோவன் புத்தகக் குறிப்பு (ஆஃப்லைன்):**\n- **குல்மோஹர்**: சித்திராபதி வண்ண மலர்கள், ஏப்ரல்-ஜூன் பூக்கும்.\n- **அசோக மரம்**: ஆரஞ்சு-சிவப்பு நறுமண மலர்கள்.\n- **சம்பா (பிராங்கிபானி)**: நறுமண வெள்ளை மலர்கள்.\n- **காஞ்சனார்**: ஒட்டகக் கால் வடிவ இலைகள், ஊதா/வெள்ளை பூக்கள்.';
+    if (isHi()) return '🌸 **डी. वी. कोवेन पुस्तक संदर्भ (ऑफ़लाइन):**\n- **गुलमोहर**: अप्रैल-जून में लाल-नारंगी फूल आते हैं।\n- **अशोक**: सुगंधित लाल-नारंगी फूलों के गुच्छे।\n- **चम्पा (फ्रेंगिपानी)**: सुगंधित सफेद-पीले फूल।\n- **कचनार**: दो-तरफा ऊँट के पैर जैसे पत्ते, बैंगनी या सफेद फूल।';
+    return '🌸 **D. V. Cowen Botanical Reference (Offline):**\n- **Gulmohur**: Crimson/scarlet flowers in huge clusters. Blooms April-June.\n- **Flame of the Forest**: Bright orange-red flowers cluster on leafless branches.\n- **Asoka Tree**: Sacred fragrant orange-scarlet clusters.\n- **Frangipani/Champa**: Fragrant white-yellow offering flowers.';
+  }
+
+  if (isTa()) return 'மன்னிக்கவும், என்னிடம் பூக்கும் மரங்கள் புத்தகத்தைப் பற்றிய தகவல்கள் மட்டுமே உள்ளன.';
+  if (isHi()) return 'मुझे खेद है, मेरे पास केवल फ्लावरिंग ट्री बुक के बारे में जानकारी है।';
+  return 'I am sorry, I only have information about the Flowering Trees book.';
+}
+
+const VITE_GEMINI_KEY = process.env.VITE_GEMINI_KEY || 'AIzaSyAeIETs3_B6wPJo8dWE_HLn0hdIt6jByCk';
+
+// RAG ask chatbot pipeline with MongoDB vector/db.json fallback search
+app.post('/api/bot/ask', async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message field is required.' });
+    }
+
+    // 1. Fetch embedding for query message
+    let queryVector = null;
+    try {
+      const embedRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=${VITE_GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'models/embedding-001',
+            content: { parts: [{ text: message }] }
+          })
+        }
+      );
+      if (embedRes.ok) {
+        const embedData = await embedRes.json();
+        queryVector = embedData.embedding?.values;
+      }
+    } catch (e) {
+      console.error('Error fetching query embedding:', e);
+    }
+
+    // If embedding API failed or returned null, use direct local offline fallback
+    if (!queryVector) {
+      console.warn('Embedding API failed, falling back to localOfflineFallback.');
+      return res.status(200).json({ reply: localOfflineFallback(message) });
+    }
+
+    // 2. Retrieve all documents
+    let docs = [];
+    if (useJsonFallback) {
+      docs = readDb().vectorDocs || [];
+    } else {
+      docs = await VectorDoc.find();
+    }
+
+    // If vector base has no records, fallback to offline lookup
+    if (docs.length === 0) {
+      console.warn('Vector database is empty. Using local fallback.');
+      return res.status(200).json({ reply: localOfflineFallback(message) });
+    }
+
+    // 3. Compute cosine similarity (dot product of normalized vectors)
+    const dotProduct = (a, b) => a.reduce((sum, val, idx) => sum + val * (b[idx] || 0), 0);
+
+    const scoredDocs = docs.map(doc => ({
+      text: doc.text,
+      score: dotProduct(queryVector, doc.embedding)
+    }));
+
+    // Sort descending and select top 3
+    scoredDocs.sort((a, b) => b.score - a.score);
+    const top3 = scoredDocs.slice(0, 3);
+    const contextText = top3.map(d => d.text).join('\n\n');
+
+    // 4. Construct System Prompt using strictly the matched paragraphs
+    const systemPrompt = `You are an AI chatbot for this website. 
+You must ONLY answer questions using the text from the "Flowering Trees" book provided below.
+
+STRICT RULES:
+1. DO NOT use your outside knowledge.
+2. DO NOT search the internet like Google.
+3. If the answer is NOT in the book text below, you must reply: "I am sorry, I only have information about the Flowering Trees book."
+4. If the user asks in Tamil, answer in Tamil. If they ask in English, answer in English. If in Hindi, answer in Hindi.
+
+Book Text:
+${contextText}`;
+
+    // 5. Send payload to Gemini generation endpoint
+    try {
+      const contents = (history || []).map(h => ({
+        role: h.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: h.content }]
+      }));
+      // Append user message if not already in history
+      if (contents.length === 0 || contents[contents.length - 1].parts[0].text !== message) {
+        contents.push({ role: 'user', parts: [{ text: message }] });
+      }
+
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${VITE_GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents,
+            generationConfig: {
+              temperature: 0.0,
+              maxOutputTokens: 256,
+              topP: 0.9
+            }
+          })
+        }
+      );
+
+      if (geminiRes.ok) {
+        const geminiData = await geminiRes.json();
+        const replyText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (replyText) {
+          return res.status(200).json({ reply: replyText.trim() });
+        }
+      }
+      
+      console.warn('Gemini API call returned non-ok status. Using offline fallback.');
+      res.status(200).json({ reply: localOfflineFallback(message) });
+    } catch (e) {
+      console.error('Error in Gemini generation call:', e);
+      res.status(200).json({ reply: localOfflineFallback(message) });
+    }
+  } catch (err) {
+    console.error('RAG endpoint error:', err);
+    res.status(500).json({ error: 'Internal server error processing chatbot message.' });
   }
 });
 

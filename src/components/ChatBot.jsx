@@ -102,8 +102,19 @@ function localFallback(q) {
   const isTa = () => /[\u0B80-\u0BFF]/.test(q) || has('tamil') || has('தமிழ்');
   const isHi = () => /[\u0900-\u097F]/.test(q) || has('hindi') || has('हिंदी');
 
-  // Flowering Trees & Shrubs in India
-  if (has('gulmohur') || has('gul mohr') || has('flame of the forest') || has('asoka') || has('frangipani') || has('champa') || has('jacaranda') || has('kaner') || has('bougainvillea') || has('kachnar') || has('amaltas') || has('coral tree') || has('pride of india') || has('colville') || has('teak') || has('baobab') || has('hibiscus') || has('gudhal') || has('ixora')) {
+  if (has('gulmohur') || has('gul mohr') || has('mayarum')) {
+    if (isTa()) return '🌸 **டி. வி. கோவன் புத்தகக் குறிப்பு (மயிர் கொன்றை / Mayarum):**\n- தமிழ் பெயர்: **Mayarum** (மயிர் கொன்றை).\n- பூக்கும் காலம்: ஏப்ரல் முதல் ஜூன் வரை.\n- மலர்கள்: பிரகாசமான சிவப்பு மற்றும் ஆரஞ்சு நிறக் கொத்துகள்.';
+    if (isHi()) return '🌸 **डी. वी. कोवेन पुस्तक संदर्भ (गुलमोहर):**\n- तमिल नाम: **Mayarum**।\n- फूल आने का समय: अप्रैल से जून।\n- विशेषताएं: बड़े समूहों में चमकीले लाल और नारंगी रंग के फूल।';
+    return '🌸 **D. V. Cowen Botanical Reference (Gul Mohr):**\n- Tamil Name: **Mayarum**.\n- Botanical Name: *Delonix regia* (syn. *Poinciana regia*).\n- Blooming Season: April to June.\n- Flowers: Crimson or scarlet flowers in huge clusters.';
+  }
+
+  if (has('jack fruit') || has('jackfruit') || has('pila') || has('pilavu') || has('kanthal')) {
+    if (isTa()) return '🌸 **டி. வி. கோவன் புத்தகக் குறிப்பு (பலா மரம் / Jackfruit):**\n- **பயன்கள்**: பழுக்காத காய்கள் சமைத்து உண்ணப்படுகின்றன; தேன்-பலா பழம் மிகவும் இனிமையானது. முதிர்ந்த விதைகள் வறுக்கப்படுகின்றன.\n- **விலங்கு தீவனம்**: பலா இலைகள் ஆடு மற்றும் மாடுகளுக்கு ஊட்டம் அளிக்கின்றன.\n- **மருத்துவ பயன்கள்**: இலைகள் புண்களுக்கு ஒத்தடம் கொடுக்கவும், இலை சாறு சுரப்பி வீக்கங்களை குணப்படுத்தவும் உதவுகிறது.\n- **இதர பயன்கள்**: பலா மரம் மரச்சாமான்கள் செய்ய உதவுகிறது. மலபாரின் நம்பூதிரி பிராமணர்கள் உலர்ந்த பலா மரக் குச்சிகளை உராய்ந்து புனித நெருப்பை உருவாக்குகிறார்கள்.';
+    if (isHi()) return '🌸 **डी. वी. कोवेन पुस्तक संदर्भ (कटहल / Jackfruit):**\n- **उपयोग**: कच्चे फल सब्जी के रूप में पकाए जाते हैं; पका हुआ फल मीठा होता है। बीजों को भूनकर खाया जाता है।\n- **पशु चारा**: पत्तियां गाय और बकरियों को मोटा करने के लिए दी जाती हैं।\n- **औषधीय उपयोग**: पत्तियों का लेप घावों पर और रस ग्रंथियों की सूजन को कम करने में सहायक है।\n- **अन्य**: लकड़ी का उपयोग निर्माण कार्य में होता है। मालाबार के नंबूदिरी ब्राह्मण सूखी कटहल की टहनियों से पवित्र अग्नि उत्पन्न करते हैं।';
+    return '🌸 **D. V. Cowen Botanical Reference (Jackfruit Tree):**\n- **Uses**: Unripe fruits are cooked as vegetables. Honey-jack variety is the sweetest. Mature seeds are roasted and eaten. \n- **Fodder**: Jackfruit leaves are used to fatten cattle and goats.\n- **Medicinal**: Leaves make a fomentation applied to wounds; leaf juice relieves gland swellings.\n- **Other Uses**: The timber is highly valued for building and cabinet work. Nambudri Brahmins of Malabar produce sacred fire by the friction of dry Jackfruit branches.';
+  }
+
+  if (has('flame of the forest') || has('asoka') || has('frangipani') || has('champa') || has('jacaranda') || has('kaner') || has('bougainvillea') || has('kachnar') || has('amaltas') || has('coral tree') || has('pride of india') || has('colville') || has('teak') || has('baobab') || has('hibiscus') || has('gudhal') || has('ixora')) {
     if (isTa()) return '🌸 **டி. வி. கோவன் புத்தகக் குறிப்பு (ஆஃப்லைன்):**\n- **குல்மோஹர்**: சித்திராபதி வண்ண மலர்கள், ஏப்ரல்-ஜூன் பூக்கும்.\n- **அசோக மரம்**: ஆரஞ்சு-சிவப்பு நறுமண மலர்கள்.\n- **சம்பா (பிராங்கிபானி)**: நறுமண வெள்ளை மலர்கள்.\n- **காஞ்சனார்**: ஒட்டகக் கால் வடிவ இலைகள், ஊதா/வெள்ளை பூக்கள்.';
     if (isHi()) return '🌸 **डी. वी. कोवेन पुस्तक संदर्भ (ऑफ़लाइन):**\n- **गुलमोहर**: अप्रैल-जून में लाल-नारंगी फूल आते हैं।\n- **अशोक**: सुगंधित लाल-नारंगी फूलों के गुच्छे।\n- **चम्पा (फ्रेंगिपानी)**: सुगंधित सफेद-पीले फूल।\n- **कचनार**: दो-तरफा ऊँट के पैर जैसे पत्ते, बैंगनी या सफेद फूल।';
     return '🌸 **D. V. Cowen Botanical Reference (Offline):**\n- **Gulmohur**: Crimson/scarlet flowers in huge clusters. Blooms April-June.\n- **Flame of the Forest**: Bright orange-red flowers cluster on leafless branches.\n- **Asoka Tree**: Sacred fragrant orange-scarlet clusters.\n- **Frangipani/Champa**: Fragrant white-yellow offering flowers.';
@@ -370,7 +381,24 @@ export default function ChatBot({ landData }) {
         { role: 'user', content: contextQ },
       ];
 
-      const reply = await callGemini(apiMessages);
+      let reply = '';
+      try {
+        const response = await fetch('http://localhost:5001/api/bot/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: q, history: apiMessages })
+        });
+        if (response.ok) {
+          const resData = await response.json();
+          reply = resData.reply;
+        } else {
+          throw new Error('Backend RAG failed');
+        }
+      } catch (backendErr) {
+        console.warn('Backend RAG failed, calling Gemini directly:', backendErr);
+        reply = await callGemini(apiMessages);
+      }
+
       const newMsg = { role: 'assistant', content: reply, time: new Date() };
       setMessages(prev => [...prev, newMsg]);
       saveMessageToDb('assistant', reply);
