@@ -116,6 +116,9 @@ export default function AuthPage({ onLogin }) {
 
   return (
     <div className={`auth-page ${langClass}`}>
+      <div className="auth-bg-grid"></div>
+      <div className="auth-glow-1"></div>
+      <div className="auth-glow-2"></div>
       <div className="auth-container">
 
         {/* ── Left panel ── */}

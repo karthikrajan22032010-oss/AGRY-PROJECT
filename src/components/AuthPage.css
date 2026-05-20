@@ -27,6 +27,7 @@
   border-radius: 50%;
   background: radial-gradient(circle, rgba(0,255,100,0.08) 0%, transparent 70%);
   animation: float 6s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .auth-glow-2 {
@@ -36,6 +37,11 @@
   border-radius: 50%;
   background: radial-gradient(circle, rgba(0,150,60,0.06) 0%, transparent 70%);
   animation: float 8s ease-in-out infinite reverse;
+  pointer-events: none;
+}
+
+.auth-bg-grid {
+  pointer-events: none;
 }
 
 .auth-container {

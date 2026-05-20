@@ -368,7 +368,6 @@ export default function ChatBot({ landData }) {
     const userMsg = { role: 'user', content: q, time: new Date() };
     const history = [...messages, userMsg];
     setMessages(history);
-    saveMessageToDb('user', q);
     setLoading(true);
 
     try {
@@ -382,27 +381,33 @@ export default function ChatBot({ landData }) {
       ];
 
       let reply = '';
+      let savedByBackend = false;
       try {
         const response = await fetch('http://localhost:5001/api/bot/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: q, history: apiMessages })
+          body: JSON.stringify({ username, message: q, history: apiMessages })
         });
         if (response.ok) {
           const resData = await response.json();
           reply = resData.reply;
+          savedByBackend = true;
         } else {
           throw new Error('Backend RAG failed');
         }
       } catch (backendErr) {
         console.warn('Backend RAG failed, calling Gemini directly:', backendErr);
+        saveMessageToDb('user', q);
         reply = await callGemini(apiMessages);
       }
 
       const newMsg = { role: 'assistant', content: reply, time: new Date() };
       setMessages(prev => [...prev, newMsg]);
-      saveMessageToDb('assistant', reply);
       
+      if (!savedByBackend) {
+        saveMessageToDb('assistant', reply);
+      }
+
       // Automatic Voice Assistant Response
       if (fromVoice || isVoiceMode || isVideoCall) {
         setTimeout(() => speakMessage(reply, history.length), 300);
@@ -410,6 +415,7 @@ export default function ChatBot({ landData }) {
       }
     } catch (err) {
       console.error('Gemini error:', err);
+      saveMessageToDb('user', q);
       const fallback = localFallback(q);
       const newMsg = { role: 'assistant', content: fallback, time: new Date(), isFallback: true };
       setMessages(prev => [...prev, newMsg]);

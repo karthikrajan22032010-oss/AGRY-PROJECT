@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LangProvider } from './context/LangContext';
 import LoadingScreen from './components/LoadingScreen';
 import AuthPage from './components/AuthPage';
@@ -7,6 +7,7 @@ import HomePage from './components/HomePage';
 import LandForm from './components/LandForm';
 import ResultsPage from './components/ResultsPage';
 import ChatBot from './components/ChatBot';
+import AdminDashboard from './components/AdminDashboard';
 import bgAgri from '/bg-agri.png';
 import './App.css';
 
@@ -15,6 +16,25 @@ function AppInner() {
   const [page, setPage] = useState('home');
   const [user, setUser] = useState(null);
   const [landData, setLandData] = useState(null);
+
+  // Monitor url paths or hashes for administrative routes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path === '/admin' || hash === '#/admin') {
+        setPage('admin');
+        setPhase('app'); // bypass client auth phase for admin access
+      }
+    };
+    handleHashChange(); // Run on mount
+    window.addEventListener('popstate', handleHashChange);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('popstate', handleHashChange);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
 
   const handleLoadingDone = () => {
     const savedUser = localStorage.getItem('agri_currentUser');
@@ -44,6 +64,26 @@ function AppInner() {
     setLandData(data);
     setPage('results');
   };
+
+  if (page === 'admin') {
+    return (
+      <AdminDashboard 
+        setPage={(p) => {
+          if (p !== 'admin') {
+            window.location.hash = '';
+            if (window.location.pathname === '/admin') {
+              window.history.pushState({}, '', '/');
+            }
+            const savedUser = localStorage.getItem('agri_currentUser');
+            if (!savedUser && !user) {
+              setPhase('auth');
+            }
+          }
+          setPage(p);
+        }} 
+      />
+    );
+  }
 
   if (phase === 'loading') {
     return <LoadingScreen onComplete={handleLoadingDone} />;

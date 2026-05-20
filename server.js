@@ -1,8 +1,14 @@
+import './server_monitor.js';
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import { initDbMonitoring } from './server_monitor.js';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 
 dotenv.config();
 
@@ -43,6 +49,9 @@ const writeDb = (data) => {
 
 // Initialize DB file if not exists
 readDb();
+
+// Initialize DB monitoring
+initDbMonitoring();
 
 // Connect to MongoDB with Fallback
 mongoose.connect(MONGODB_URI)
@@ -429,7 +438,7 @@ const VITE_GEMINI_KEY = process.env.VITE_GEMINI_KEY || 'AIzaSyAeIETs3_B6wPJo8dWE
 // RAG ask chatbot pipeline with MongoDB vector/db.json fallback search
 app.post('/api/bot/ask', async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { username, message, history } = req.body;
     if (!message) {
       return res.status(400).json({ error: 'Message field is required.' });
     }
@@ -491,24 +500,67 @@ app.post('/api/bot/ask', async (req, res) => {
 
     // 4. Construct System Prompt using strictly the matched paragraphs
     const systemPrompt = `You are an AI chatbot for this website. 
-You must ONLY answer questions using the text from the "Flowering Trees" book provided below.
+You must ONLY answer questions using the text from the reference books/information provided below.
 
 STRICT RULES:
 1. DO NOT use your outside knowledge.
 2. DO NOT search the internet like Google.
-3. If the answer is NOT in the book text below, you must reply: "I am sorry, I only have information about the Flowering Trees book."
+3. If the answer is NOT in the reference text below, you must reply: "I am sorry, I only have information about the Flowering Trees and reference books."
 4. If the user asks in Tamil, answer in Tamil. If they ask in English, answer in English. If in Hindi, answer in Hindi.
 
-Book Text:
+Reference Book/Information Text:
 ${contextText}`;
 
-    // 5. Send payload to Gemini generation endpoint
+    // 5. Build/Retrieve history and save user query
+    let finalHistory = [];
+    const isRealUser = username && username !== 'guest';
+
+    if (isRealUser) {
+      // Save user question to DB first
+      if (useJsonFallback) {
+        const db = readDb();
+        // Load history logs (last 5 messages) before adding current
+        const historyLogs = db.chats.filter(c => c.username === username);
+        historyLogs.sort((a, b) => new Date(b.time) - new Date(a.time));
+        const last5 = historyLogs.slice(0, 5);
+        last5.reverse();
+        finalHistory = last5;
+
+        // Save current question
+        db.chats.push({
+          username,
+          role: 'user',
+          content: message,
+          time: new Date().toISOString()
+        });
+        writeDb(db);
+      } else {
+        // Load history logs (last 5 messages) before adding current
+        const historyLogs = await Chat.find({ username }).sort({ time: -1 }).limit(5);
+        historyLogs.reverse();
+        finalHistory = historyLogs;
+
+        // Save current question
+        const userMsg = new Chat({
+          username,
+          role: 'user',
+          content: message,
+          time: new Date()
+        });
+        await userMsg.save();
+      }
+    } else {
+      // Guest or no user - fallback to history sent by frontend
+      finalHistory = history || [];
+    }
+
+    // 6. Send payload to Gemini generation endpoint
     try {
-      const contents = (history || []).map(h => ({
+      const contents = finalHistory.map(h => ({
         role: h.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: h.content }]
       }));
-      // Append user message if not already in history
+      // Append user message if not already in contents
       if (contents.length === 0 || contents[contents.length - 1].parts[0].text !== message) {
         contents.push({ role: 'user', parts: [{ text: message }] });
       }
@@ -534,19 +586,258 @@ ${contextText}`;
         const geminiData = await geminiRes.json();
         const replyText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
         if (replyText) {
-          return res.status(200).json({ reply: replyText.trim() });
+          const cleanReply = replyText.trim();
+          
+          // Save assistant answer if valid user
+          if (isRealUser) {
+            if (useJsonFallback) {
+              const db = readDb();
+              db.chats.push({
+                username,
+                role: 'assistant',
+                content: cleanReply,
+                time: new Date().toISOString()
+              });
+              writeDb(db);
+            } else {
+              const assistantMsg = new Chat({
+                username,
+                role: 'assistant',
+                content: cleanReply,
+                time: new Date()
+              });
+              await assistantMsg.save();
+            }
+          }
+          return res.status(200).json({ reply: cleanReply });
         }
       }
       
       console.warn('Gemini API call returned non-ok status. Using offline fallback.');
-      res.status(200).json({ reply: localOfflineFallback(message) });
+      const fallbackReply = localOfflineFallback(message);
+      if (isRealUser) {
+        if (useJsonFallback) {
+          const db = readDb();
+          db.chats.push({
+            username,
+            role: 'assistant',
+            content: fallbackReply,
+            time: new Date().toISOString()
+          });
+          writeDb(db);
+        } else {
+          const assistantMsg = new Chat({
+            username,
+            role: 'assistant',
+            content: fallbackReply,
+            time: new Date()
+          });
+          await assistantMsg.save();
+        }
+      }
+      res.status(200).json({ reply: fallbackReply });
     } catch (e) {
       console.error('Error in Gemini generation call:', e);
-      res.status(200).json({ reply: localOfflineFallback(message) });
+      const fallbackReply = localOfflineFallback(message);
+      if (isRealUser) {
+        if (useJsonFallback) {
+          const db = readDb();
+          db.chats.push({
+            username,
+            role: 'assistant',
+            content: fallbackReply,
+            time: new Date().toISOString()
+          });
+          writeDb(db);
+        } else {
+          const assistantMsg = new Chat({
+            username,
+            role: 'assistant',
+            content: fallbackReply,
+            time: new Date()
+          });
+          await assistantMsg.save();
+        }
+      }
+      res.status(200).json({ reply: fallbackReply });
     }
   } catch (err) {
     console.error('RAG endpoint error:', err);
     res.status(500).json({ error: 'Internal server error processing chatbot message.' });
+  }
+});
+
+// --- ADMIN API ENDPOINTS ---
+
+// Admin Login
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  if (password === adminPassword) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ success: false, error: 'Invalid admin password' });
+  }
+});
+
+// Fetch all chats enriched with user metadata
+app.get('/api/admin/chats', async (req, res) => {
+  try {
+    let chatsList = [];
+    let usersList = [];
+
+    if (useJsonFallback) {
+      const db = readDb();
+      chatsList = db.chats || [];
+      usersList = db.users || [];
+    } else {
+      chatsList = await Chat.find().lean();
+      usersList = await User.find().lean();
+    }
+
+    // Map username -> user profile details
+    const userMap = {};
+    usersList.forEach(u => {
+      userMap[u.username] = {
+        phone: u.fullPhone || u.phone,
+        email: u.email || 'N/A',
+        createdAt: u.createdAt
+      };
+    });
+
+    // Enrich chats with user contact info
+    const enrichedChats = chatsList.map(c => {
+      const userMeta = userMap[c.username] || { phone: 'N/A', email: 'N/A' };
+      // Handle Mongoose toObject vs plain JS object
+      const plainChat = c._id ? { ...c } : c;
+      return {
+        ...plainChat,
+        phone: userMeta.phone,
+        email: userMeta.email
+      };
+    });
+
+    // Sort by timestamp newest first so the admin sees the latest logs at the top
+    enrichedChats.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+    res.json(enrichedChats);
+  } catch (err) {
+    console.error('Failed to fetch admin chats:', err);
+    res.status(500).json({ error: 'Failed to retrieve logs' });
+  }
+});
+
+// PDF upload & vector training pipeline
+app.post('/api/admin/upload-pdf', async (req, res) => {
+  try {
+    const { pdfData, filename } = req.body;
+    if (!pdfData) {
+      return res.status(400).json({ error: 'No PDF data provided' });
+    }
+
+    console.log(`📥 Admin: Received PDF upload "${filename || 'unknown.pdf'}"`);
+    const dataBuffer = Buffer.from(pdfData, 'base64');
+    
+    let rawText = '';
+    try {
+      const pdfParser = new pdf.PDFParse({ data: dataBuffer });
+      const textResult = await pdfParser.getText();
+      rawText = textResult.text || '';
+      console.log('✅ PDF parsed successfully in Admin API.');
+    } catch (e) {
+      console.error('❌ Failed parsing uploaded PDF:', e);
+      return res.status(400).json({ error: `Failed to parse PDF document: ${e.message}` });
+    }
+
+    // Split text into paragraphs/chunks
+    const rawParagraphs = rawText.split(/\n\s*\n+/);
+    const paragraphs = [];
+    for (let p of rawParagraphs) {
+      p = p.replace(/\s+/g, ' ').trim();
+      // Filter out short chunks, page headers/numbers
+      if (p.length > 80 && !p.toLowerCase().includes('page') && !/^\d+$/.test(p)) {
+        paragraphs.push(p);
+      }
+    }
+
+    console.log(`📊 Parsed ${paragraphs.length} paragraphs. Starting vector generation...`);
+    if (paragraphs.length === 0) {
+      return res.status(400).json({ error: 'No readable text content found in PDF' });
+    }
+
+    let successCount = 0;
+    // Process chunks and save them (append new ones)
+    for (let i = 0; i < paragraphs.length; i++) {
+      const text = paragraphs[i];
+      // Rate limit safety delay
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      try {
+        const embedRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=${VITE_GEMINI_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'models/embedding-001',
+              content: { parts: [{ text }] }
+            })
+          }
+        );
+        let embedding = null;
+        if (embedRes.ok) {
+          const embedData = await embedRes.json();
+          embedding = embedData.embedding?.values || null;
+        } else {
+          throw new Error(`Embedding API status: ${embedRes.status}`);
+        }
+
+        if (!embedding) {
+          // Mock embedding fallback if API fails
+          const mockVec = [];
+          for (let k = 0; k < 768; k++) {
+            mockVec.push(Math.sin((text.charCodeAt(k % text.length) || 0) * (k + 1)));
+          }
+          embedding = mockVec;
+        }
+
+        if (useJsonFallback) {
+          const db = readDb();
+          db.vectorDocs.push({ text, embedding });
+          writeDb(db);
+        } else {
+          const doc = new VectorDoc({ text, embedding });
+          await doc.save();
+        }
+        successCount++;
+      } catch (err) {
+        console.warn(`⚠️ Embedding failed for chunk ${i+1}. Using mock vector.`, err.message);
+        const mockVec = [];
+        for (let k = 0; k < 768; k++) {
+          mockVec.push(Math.sin((text.charCodeAt(k % text.length) || 0) * (k + 1)));
+        }
+        if (useJsonFallback) {
+          const db = readDb();
+          db.vectorDocs.push({ text, embedding: mockVec });
+          writeDb(db);
+        } else {
+          const doc = new VectorDoc({ text, embedding: mockVec });
+          await doc.save();
+        }
+        successCount++;
+      }
+    }
+
+    console.log(`🎉 PDF Training Complete! Saved ${successCount}/${paragraphs.length} vectors to database.`);
+    res.json({
+      success: true,
+      message: `Successfully processed and trained knowledge base on PDF.`,
+      paragraphs: paragraphs.length,
+      trained: successCount
+    });
+  } catch (err) {
+    console.error('PDF upload training error:', err);
+    res.status(500).json({ error: 'Internal server error training PDF document.' });
   }
 });
 

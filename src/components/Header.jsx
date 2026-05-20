@@ -37,7 +37,9 @@ export default function Header({ user, onLogout, page, setPage }) {
         temp: cw?.temperature_2m ? Math.round(cw.temperature_2m) : '--',
         humidity,
         windSpeed: windSpeed ? Math.round(windSpeed) : 0,
-        isHeavyWind: windSpeed > 15,
+        isHeavyWind: windSpeed > 25, // High wind warning in km/h (triggers alert for 26 km/h)
+        isLowHumidity: humidity < 60, // Low humidity warning (triggers alert for 57%)
+        isHighHumidity: humidity > 75, // High humidity warning
         condition: conditions[wcode] || 'Partly Cloudy',
         icon,
         location: locationName,
@@ -75,6 +77,7 @@ export default function Header({ user, onLogout, page, setPage }) {
     { id: 'home', label: t('home'), icon: '🏠' },
     { id: 'land', label: t('analyze'), icon: '🌾' },
     { id: 'results', label: t('results'), icon: '📊' },
+    { id: 'admin', label: 'Admin', icon: '🛡️' },
   ];
 
   return (
@@ -103,10 +106,17 @@ export default function Header({ user, onLogout, page, setPage }) {
       {/* Right — Weather + Time + Lang + User */}
       <div className="header-right">
         {/* Location + Weather */}
-        <div className="header-weather">
+        <div 
+          className="header-weather" 
+          title={lang === 'ta' ? 'கூகுளில் தற்போதைய வானிலை பார்க்க கிளிக் செய்யவும்' : lang === 'hi' ? 'गूगल पर लाइव मौसम देखने के लिए क्लिक करें' : 'Click to view live weather on Google'}
+          onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(weather.location || 'Kovilpatti')}+weather`, '_blank')}
+        >
           <span className="weather-icon">{weather.icon}</span>
           <div className="weather-info">
-            <span className="weather-location">{weather.location}</span>
+            <span className="weather-location">
+              {weather.location}
+              <span className="weather-live-indicator" style={{ fontSize: '0.65rem', color: 'var(--green-primary)', marginLeft: '6px', opacity: 0.8, verticalAlign: 'middle' }}>● LIVE</span>
+            </span>
             <div className="weather-stats">
               <span className="weather-temp">{weather.temp}°C</span>
               <span className="weather-sep">·</span>
@@ -115,9 +125,23 @@ export default function Header({ user, onLogout, page, setPage }) {
               <span className="weather-wind">💨 {weather.windSpeed} km/h</span>
             </div>
           </div>
-          {weather.isHeavyWind && (
-            <div className="wind-alert-badge" title="Wind speed exceeds safe levels!">
-              ⚠️ {lang === 'ta' ? 'பலத்த காற்று!' : lang === 'hi' ? 'तेज हवा!' : 'Heavy Wind!'}
+          {(weather.isHeavyWind || weather.isLowHumidity || weather.isHighHumidity) && (
+            <div className="weather-alerts-container">
+              {weather.isHeavyWind && (
+                <div className="wind-alert-badge" title="Wind speed exceeds safe spraying levels!">
+                  ⚠️ {lang === 'ta' ? 'காற்று' : lang === 'hi' ? 'हवा' : 'Wind'}
+                </div>
+              )}
+              {weather.isLowHumidity && (
+                <div className="hum-alert-badge" title="Low humidity warning!">
+                  ⚠️ {lang === 'ta' ? 'குறைந்த ஈரம்' : lang === 'hi' ? 'कम नमी' : 'Low Hum'}
+                </div>
+              )}
+              {weather.isHighHumidity && (
+                <div className="hum-alert-badge" title="High humidity increases fungal risks!">
+                  ⚠️ {lang === 'ta' ? 'அதிக ஈரம்' : lang === 'hi' ? 'ज्यादा नमी' : 'High Hum'}
+                </div>
+              )}
             </div>
           )}
         </div>
